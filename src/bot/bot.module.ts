@@ -18,6 +18,7 @@ import { PollCommand } from './commands/poll/poll.command';
 import { PollService } from './commands/poll/poll.service';
 import { MezonBotMessage } from './models/mezonBotMessage.entity';
 import { ListenerMessageButtonClicked } from './listeners/onMessageButtonClicked.listener';
+import { QRCodeCommand } from './commands/qrcode/qrcode.command';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { ListenerMessageButtonClicked } from './listeners/onMessageButtonClicked
     HelpCommand,
     AvatarCommand,
     PollCommand,
+    QRCodeCommand,
     PollService,
     ConfigService,
     ExtendersService,

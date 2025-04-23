@@ -1,32 +1,32 @@
-import { InjectRepository } from '@nestjs/typeorm';
 import { ChannelMessage, EMarkdownType } from 'mezon-sdk';
-import { CommandMessage } from 'src/bot/base/command.abstract';
 import { Command } from 'src/bot/base/commandRegister.decorator';
-import { EmbedProps } from 'src/bot/constants/configs';
-import { EUserError } from 'src/bot/constants/error';
-import { User } from 'src/bot/models/user.entity';
-import { getRandomColor } from 'src/bot/utils/helps';
-import { MezonClientService } from 'src/mezon/services/mezon-client.service';
+import { DynamicCommandService } from 'src/bot/services/dynamic.service';
+import * as QRCode from 'qrcode';
+import { EmbedProps, MEZON_EMBED_FOOTER } from 'src/bot/constants/configs';
+import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { EUserError } from 'src/bot/constants/error';
+import { CommandMessage } from 'src/bot/base/command.abstract';
+import { User } from 'src/bot/models/user.entity';
+import { MezonClientService } from 'src/mezon/services/mezon-client.service';
+import { getRandomColor } from 'src/bot/utils/helps';
 
-@Command('avatar')
-export class AvatarCommand extends CommandMessage {
+@Command('qr')
+export class QRCodeCommand extends CommandMessage {
   constructor(
+    clientService: MezonClientService,
     @InjectRepository(User)
     private userRepository: Repository<User>,
-    clientService: MezonClientService,
   ) {
     super(clientService);
   }
 
   async execute(args: string[], message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
-    console.log('args', args);
-    let messageContent: string;
-    let userQuery: string | undefined;
+    let userQuery: string = '';
 
     if (Array.isArray(message.references) && message.references.length) {
-      userQuery = message.references[0].message_sender_username;
+      userQuery = message.references[0].message_sender_username!;
     } else {
       if (
         Array.isArray(message.mentions) &&
@@ -38,9 +38,9 @@ export class AvatarCommand extends CommandMessage {
             user_id: message.mentions[0].user_id,
           },
         });
-        userQuery = findUser?.username;
+        userQuery = findUser?.username!;
       } else {
-        userQuery = args.length ? args[0] : message.username;
+        userQuery = args.length ? args[0] : message.username!;
       }
 
       //check fist arg
@@ -51,15 +51,13 @@ export class AvatarCommand extends CommandMessage {
             '(user.clan_nick = :query OR user.username = :query OR user.user_id = :query)',
             { query: args[0] },
           )
-          .orderBy(
-            'CASE WHEN user.clan_nick = :query THEN 1 WHEN user.username = :query THEN 2 ELSE 3 END',
-          )
           .getOne();
         if (findUserArg) {
           userQuery = findUserArg.username;
         }
       }
     }
+
     const findUser = await this.userRepository.findOne({
       where: { username: userQuery },
     });
@@ -75,28 +73,30 @@ export class AvatarCommand extends CommandMessage {
           },
         ],
       });
+    const sendTokenData = {
+      sender_id: message.sender_id,
+      receiver_id: findUser.user_id,
+      receiver_name: findUser.username,
+    };
+    const qrCodeDataUrl = await QRCode.toDataURL(
+      JSON.stringify(sendTokenData),
+      {
+        errorCorrectionLevel: 'L',
+      },
+    );
     const embed: EmbedProps[] = [
       {
         color: getRandomColor(),
-        title: `${findUser.clan_nick || findUser.username}'s avatar`,
-        author: {
-          name: findUser.clan_nick || findUser.username,
-          icon_url: findUser.avatar,
-          url: findUser.avatar,
-        },
+        title: `QR send token to ${findUser.username}`,
         image: {
-          url: findUser.avatar,
-          width: '400px',
-          height: '400px'
+          url: qrCodeDataUrl,
+          width: '300px',
+          height: '300px'
         },
         timestamp: new Date().toISOString(),
-        footer: {
-          text: 'Powered by Mezon',
-          icon_url:
-            'https://cdn.mezon.vn/1837043892743049216/1840654271217930240/1827994776956309500/857_0246x0w.webp',
-        },
+        footer: MEZON_EMBED_FOOTER,
       },
     ];
-    return messageChannel?.reply({ embed });
+    return await messageChannel?.reply({ embed });
   }
 }
