@@ -85,7 +85,7 @@ export class SlotsCommand extends CommandMessage {
     }
 
     const wonAmount = money * multiplier;
-    findUser.amount = win ? findUser.amount + wonAmount : findUser.amount - money;
+    findUser.amount = win ? Number(findUser.amount) + Number(wonAmount) : Number(findUser.amount) - Number(money);
     await this.userRepository.save(findUser);
 
     const resultEmbed = {
