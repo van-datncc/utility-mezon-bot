@@ -19,6 +19,10 @@ import { PollService } from './commands/poll/poll.service';
 import { MezonBotMessage } from './models/mezonBotMessage.entity';
 import { ListenerMessageButtonClicked } from './listeners/onMessageButtonClicked.listener';
 import { QRCodeCommand } from './commands/qrcode/qrcode.command';
+import { ListenerTokenSend } from './listeners/tokensend.handle';
+import { WithdrawTokenCommand } from './commands/casino/Withdraw';
+import { AccBalanceCommand } from './commands/casino/accBalance';
+import { SlotsCommand } from './commands/casino/slots.command';
 
 @Module({
   imports: [
@@ -42,6 +46,10 @@ import { QRCodeCommand } from './commands/qrcode/qrcode.command';
     ConfigService,
     ExtendersService,
     DynamicCommandService,
+    ListenerTokenSend,
+    WithdrawTokenCommand,
+    AccBalanceCommand,
+    SlotsCommand,
   ],
   controllers: [],
 })
