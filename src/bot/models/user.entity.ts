@@ -61,4 +61,7 @@ export class User {
 
   @Column({ type: 'numeric', nullable: true })
   createdAt: number;
+
+  @Column({ type: 'numeric', nullable: true, default: 0 })
+  amount: number;
 }
