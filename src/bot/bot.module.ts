@@ -26,6 +26,7 @@ import { SlotsCommand } from './commands/casino/slots.command';
 import { WelcomeMessageHandler } from './listeners/welcomeMessages';
 import { WelcomeMessage } from './models/welcomeMessage.entity';
 import { WelcomeMsgCommand } from './commands/welcomeMessages/welcomeMessages';
+import { WelcomeMsgInfoCommand } from './commands/welcomeMessages/welcomeMessagesInfo';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { WelcomeMsgCommand } from './commands/welcomeMessages/welcomeMessages';
     SlotsCommand,
     WelcomeMessageHandler,
     WelcomeMsgCommand,
+    WelcomeMsgInfoCommand,
   ],
   controllers: [],
 })
