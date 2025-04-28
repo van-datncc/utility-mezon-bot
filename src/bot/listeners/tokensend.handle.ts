@@ -14,15 +14,19 @@ export class ListenerTokenSend {
 
   @OnEvent(Events.TokenSend)
   async handleRecharge(tokenEvent: TokenSentEvent) {
+    console.log('tokenEvent: ', tokenEvent);
+    console.log('process.env.BOT_KOMU_ID: ', process.env.BOT_KOMU_ID);
     if (tokenEvent.amount <= 0) return; 
     if (tokenEvent.receiver_id === process.env.BOT_KOMU_ID && tokenEvent.sender_id) {
       try {
         const sender = await this.userRepository.findOne({
           where: { user_id: tokenEvent.sender_id },
         });
+        console.log('sender1: ', sender);
 
         if (!sender) return;
         sender.amount = (Number(sender.amount) || 0) + Number(tokenEvent.amount);
+        console.log('sender2: ', sender);
         await this.userRepository.save(sender);
       } catch (e) {
         console.log(e);
