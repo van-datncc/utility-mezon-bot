@@ -23,6 +23,10 @@ import { ListenerTokenSend } from './listeners/tokensend.handle';
 import { WithdrawTokenCommand } from './commands/casino/Withdraw';
 import { AccBalanceCommand } from './commands/casino/accBalance';
 import { SlotsCommand } from './commands/casino/slots.command';
+import { WelcomeMessageHandler } from './listeners/welcomeMessages';
+import { WelcomeMessage } from './models/welcomeMessage.entity';
+import { WelcomeMsgCommand } from './commands/welcomeMessages/welcomeMessages';
+import { WelcomeMsgInfoCommand } from './commands/welcomeMessages/welcomeMessagesInfo';
 
 @Module({
   imports: [
@@ -30,7 +34,7 @@ import { SlotsCommand } from './commands/casino/slots.command';
       dest: './files',
     }),
     DiscoveryModule,
-    TypeOrmModule.forFeature([User, MezonBotMessage]),
+    TypeOrmModule.forFeature([User, MezonBotMessage, WelcomeMessage]),
     HttpModule,
   ],
   providers: [
@@ -50,6 +54,9 @@ import { SlotsCommand } from './commands/casino/slots.command';
     WithdrawTokenCommand,
     AccBalanceCommand,
     SlotsCommand,
+    WelcomeMessageHandler,
+    WelcomeMsgCommand,
+    WelcomeMsgInfoCommand,
   ],
   controllers: [],
 })

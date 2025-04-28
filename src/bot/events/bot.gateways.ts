@@ -42,6 +42,7 @@ export class BotGateway {
     });
 
     this.client.onTokenSend((data: TokenSentEvent) => {
+      console.log('TokenSentEvent: ', data);
       this.eventEmitter.emit(Events.TokenSend, data);
     });
 
@@ -101,8 +102,15 @@ export class BotGateway {
       this.eventEmitter.emit(Events.GiveCoffee, data);
     });
 
-    this.client.onAddClanUser((data: AddClanUserEvent) => {
+    this.client.onAddClanUser(async (data: AddClanUserEvent) => {
       this.eventEmitter.emit(Events.AddClanUser, data);
+      const user: any = {
+        user_id: data.user.user_id,
+        username: data.user.username,
+        avatar: data.user.avatar,
+        display_name: data.user.display_name,
+      };
+      await this.extendersService.addDBUser(user);
     });
 
     this.client.onRoleAssign((data: RoleAssignedEvent) => {
@@ -115,7 +123,16 @@ export class BotGateway {
       });
       try {
         if (message.sender_id && message.sender_id !== '0') {
-          await this.extendersService.addDBUser(message);
+          const user: any = {
+            user_id: message.sender_id,
+            username: message.username,
+            avatar: message.avatar,
+            display_name: message.display_name,
+            message_id: message.message_id,
+            clan_avatar: message.clan_avatar,
+            clan_nick: message.clan_nick,
+          };
+          await this.extendersService.addDBUser(user);
         }
       } catch (e) {
         console.log(e);
