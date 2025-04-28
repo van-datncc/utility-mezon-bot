@@ -42,6 +42,7 @@ export class BotGateway {
     });
 
     this.client.onTokenSend((data: TokenSentEvent) => {
+      console.log('TokenSentEvent: ', data);
       this.eventEmitter.emit(Events.TokenSend, data);
     });
 
