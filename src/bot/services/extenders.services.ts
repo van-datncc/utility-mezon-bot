@@ -2,8 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../models/user.entity';
-import { ChannelMessage } from 'mezon-sdk';
-
+interface SharedUserProperties {
+  user_id: string;
+  username: string;
+  avatar: string;
+  display_name?: string;
+  message_id?: string;
+  clan_avatar?: string;
+  clan_nick?: string;
+}
 @Injectable()
 export class ExtendersService {
   constructor(
@@ -11,22 +18,22 @@ export class ExtendersService {
     private userRepository: Repository<User>,
   ) {}
 
-  async addDBUser(message: ChannelMessage) {
-    if (message.sender_id === '1767478432163172999') return; // ignored anonymous user
+  async addDBUser(user: SharedUserProperties) {
+    if (user.user_id === '1767478432163172999') return; // ignored anonymous user
     const findUser = await this.userRepository.findOne({
-      where: { user_id: message.sender_id },
+      where: { user_id: user.user_id },
     });
 
     if (findUser) {
-      findUser.user_id = message.sender_id!;
-      findUser.username = message.username!;
-      findUser.avatar = message.clan_avatar! || message.avatar!;
+      findUser.user_id = user.user_id!;
+      findUser.username = user.username!;
+      findUser.avatar = user.clan_avatar! || user.avatar!;
       findUser.bot = false;
-      findUser.display_name = message.display_name ?? '';
-      findUser.clan_nick = message.clan_nick
-        ? message.clan_nick
+      findUser.display_name = user.display_name ?? '';
+      findUser.clan_nick = user.clan_nick
+        ? user.clan_nick
         : findUser.clan_nick;
-      findUser.last_message_id = message.message_id!;
+      findUser.last_message_id = user.message_id!;
       findUser.last_message_time = Date.now();
       findUser.deactive = findUser.deactive;
       findUser.botPing = findUser.botPing;
@@ -35,13 +42,13 @@ export class ExtendersService {
     }
 
     const komuUser = {
-      user_id: message.sender_id,
-      username: message.username,
-      avatar: message.clan_avatar || message.avatar,
+      user_id: user.user_id,
+      username: user.username,
+      avatar: user.clan_avatar || user.avatar,
       bot: false,
-      display_name: message.display_name ?? '',
-      clan_nick: message.clan_nick ?? '',
-      last_message_id: message.message_id,
+      display_name: user.display_name ?? '',
+      clan_nick: user.clan_nick ?? '',
+      last_message_id: user.message_id,
       last_message_time: Date.now(),
       scores_quiz: 0,
       deactive: false,
