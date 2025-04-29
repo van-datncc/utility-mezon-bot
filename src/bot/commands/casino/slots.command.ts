@@ -40,7 +40,7 @@ export class SlotsCommand extends CommandMessage {
     }
 
     const findUser = await this.userRepository.findOne({
-        where: { user_id: message.sender_id },
+      where: { user_id: message.sender_id },
     });
 
     if (!findUser)
@@ -54,7 +54,7 @@ export class SlotsCommand extends CommandMessage {
           },
         ],
       });
-    
+
     if ((findUser.amount || 0) < money) {
       return await messageChannel?.reply({
         t: EUserError.INVALID_AMOUNT,
@@ -71,21 +71,27 @@ export class SlotsCommand extends CommandMessage {
     let win = false;
     let number = [0, 0, 0];
     for (let i = 0; i < 3; i++) {
-        number[i] = Math.floor(Math.random() * slotItems.length);
+      number[i] = Math.floor(Math.random() * slotItems.length);
     }
 
     let multiplier = 0;
 
     if (number[0] === number[1] && number[1] === number[2]) {
-        multiplier = 9;
-        win = true;
-    } else if (number[0] === number[1] || number[0] === number[2] || number[1] === number[2]) {
-        multiplier = 2;
-        win = true;
+      multiplier = 9;
+      win = true;
+    } else if (
+      number[0] === number[1] ||
+      number[0] === number[2] ||
+      number[1] === number[2]
+    ) {
+      multiplier = 2;
+      win = true;
     }
 
     const wonAmount = money * multiplier;
-    findUser.amount = win ? Number(findUser.amount) + Number(wonAmount) : Number(findUser.amount) - Number(money);
+    findUser.amount = win
+      ? Number(findUser.amount) + Number(wonAmount)
+      : Number(findUser.amount) - Number(money);
     await this.userRepository.save(findUser);
 
     const resultEmbed = {
@@ -96,6 +102,17 @@ export class SlotsCommand extends CommandMessage {
             Bạn đã cược: ${money}
             Bạn ${win ? 'thắng' : 'thua'}: ${win ? wonAmount : money}
             `,
+      fields: [
+        { name: `kq1`, value: `  ${slotItems[number[0]]}` },
+        {
+          name: `kq2`,
+          value: `  ${slotItems[number[1]]}`,
+        },
+        {
+          name: `kq3`,
+          value: `  ${slotItems[number[2]]}`,
+        },
+      ],
     };
 
     return messageChannel?.reply({ embed: [resultEmbed] });
