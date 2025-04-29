@@ -25,8 +25,8 @@ import { AccBalanceCommand } from './commands/casino/accBalance';
 import { SlotsCommand } from './commands/casino/slots.command';
 import { WelcomeMessageHandler } from './listeners/welcomeMessages';
 import { WelcomeMessage } from './models/welcomeMessage.entity';
-import { WelcomeMsgCommand } from './commands/welcomeMessages/welcomeMessages';
-import { WelcomeMsgInfoCommand } from './commands/welcomeMessages/welcomeMessagesInfo';
+import { WelcomeMsgCommand } from './commands/welcomeMessages/welcomeMessages.command';
+import { WelcomeMsgInfoCommand } from './commands/welcomeMessages/welcomeMessagesInfo.command';
 
 @Module({
   imports: [

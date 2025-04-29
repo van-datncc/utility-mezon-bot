@@ -1,5 +1,9 @@
 import { InjectRepository } from '@nestjs/typeorm';
-import { ChannelMessage, EMarkdownType } from 'mezon-sdk';
+import {
+  ChannelMessage,
+  EMarkdownType,
+  EMessageComponentType,
+} from 'mezon-sdk';
 import { CommandMessage } from 'src/bot/base/command.abstract';
 import { Command } from 'src/bot/base/commandRegister.decorator';
 import { User } from 'src/bot/models/user.entity';
@@ -8,7 +12,16 @@ import { Repository } from 'typeorm';
 import { getRandomColor } from 'src/bot/utils/helps';
 import { EUserError } from 'src/bot/constants/error';
 
-const slotItems = ['🍇', '🍉', '🍊', '🍎', '🍓', '🍒'];
+const slotItems = [
+  '1.JPG',
+  '2.JPG',
+  '3.JPG',
+  '4.JPG',
+  '5.JPG',
+  '6.JPG',
+  '7.JPG',
+  '8.JPG',
+];
 
 @Command('slots')
 export class SlotsCommand extends CommandMessage {
@@ -22,28 +35,32 @@ export class SlotsCommand extends CommandMessage {
 
   async execute(args: string[], message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
+    const money = 5000;
 
-    if (!args[0]) {
-      return messageChannel?.reply({
-        t: 'Bạn cần cung cấp số tiền cược.',
-        mk: [],
-      });
-    }
+    // if (!args[0]) {
+    //   return messageChannel?.reply({
+    //     t: 'Bạn cần cung cấp số tiền cược.',
+    //     mk: [],
+    //   });
+    // }
 
-    const money = parseInt(args[0], 10);
-
-    if (isNaN(money) || money <= 0) {
-      return messageChannel?.reply({
-        t: 'Số tiền cược phải là một số dương hợp lệ.',
-        mk: [],
-      });
-    }
+    // const money = parseInt(args[0], 10);
+    // if (isNaN(money) || money <= 0) {
+    //   return messageChannel?.reply({
+    //     t: 'Số tiền cược phải là một số dương hợp lệ.',
+    //     mk: [],
+    //   });
+    // }
 
     const findUser = await this.userRepository.findOne({
       where: { user_id: message.sender_id },
     });
 
-    if (!findUser)
+    const botInfo = await this.userRepository.findOne({
+      where: { user_id: process.env.UTILITY_BOT_ID },
+    });
+
+    if (!findUser || !botInfo)
       return await messageChannel?.reply({
         t: EUserError.INVALID_USER,
         mk: [
@@ -70,14 +87,17 @@ export class SlotsCommand extends CommandMessage {
 
     let win = false;
     let number = [0, 0, 0];
+    const results: string[][] = [];
     for (let i = 0; i < 3; i++) {
       number[i] = Math.floor(Math.random() * slotItems.length);
+      const result = [...slotItems, slotItems[number[i]]];
+      results.push(result);
     }
 
     let multiplier = 0;
 
     if (number[0] === number[1] && number[1] === number[2]) {
-      multiplier = 9;
+      multiplier = 8;
       win = true;
     } else if (
       number[0] === number[1] ||
@@ -86,14 +106,42 @@ export class SlotsCommand extends CommandMessage {
     ) {
       multiplier = 2;
       win = true;
+    } else if (
+      number[0] === number[1] &&
+      number[1] === number[2] &&
+      slotItems[number[0]] === '1.JPG'
+    ) {
+      multiplier = 1;
+      win = true;
     }
 
-    const wonAmount = money * multiplier;
+    const betMoney = Math.round(money * 0.9);
+    let wonAmount = betMoney * multiplier;
+    let isJackPot = false;
+    if (botInfo?.jackPot < betMoney * multiplier || multiplier === 1) {
+      wonAmount = botInfo?.jackPot;
+      isJackPot = true;
+    }
     findUser.amount = win
       ? Number(findUser.amount) + Number(wonAmount)
       : Number(findUser.amount) - Number(money);
     await this.userRepository.save(findUser);
+    botInfo.jackPot = win
+      ? Number(botInfo.jackPot) - Number(wonAmount)
+      : Number(botInfo.jackPot) + Number(betMoney);
+    botInfo.amount = Number(botInfo.amount) + Number(money - betMoney);
 
+    if (isJackPot) {
+      if (botInfo.amount > 100000) {
+        botInfo.jackPot = 100000;
+        botInfo.amount =
+          Number(botInfo.amount) + Number(money - betMoney) - 100000;
+      } else {
+        botInfo.jackPot = botInfo.amount;
+        botInfo.amount = Number(botInfo.amount) - Number(botInfo.jackPot);
+      }
+    }
+    await this.userRepository.save(botInfo);
     const resultEmbed = {
       color: getRandomColor(),
       title: '🎰 Kết quả Slots 🎰',
@@ -103,14 +151,19 @@ export class SlotsCommand extends CommandMessage {
             Bạn ${win ? 'thắng' : 'thua'}: ${win ? wonAmount : money}
             `,
       fields: [
-        { name: `kq1`, value: `  ${slotItems[number[0]]}` },
         {
-          name: `kq2`,
-          value: `  ${slotItems[number[1]]}`,
-        },
-        {
-          name: `kq3`,
-          value: `  ${slotItems[number[2]]}`,
+          name: '',
+          value: '',
+          inputs: {
+            id: `slots`,
+            type: 6,
+            component: results,
+            url_img:
+              'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1745911594825_0spritesheet.png',
+            url_position:
+              'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1745912345493_0spritesheet.json',
+            jackpot: botInfo.amount,
+          },
         },
       ],
     };
