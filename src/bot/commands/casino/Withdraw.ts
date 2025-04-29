@@ -67,7 +67,7 @@ export class WithdrawTokenCommand extends CommandMessage {
     const successMessage = `...💸Rút ${money} token thành công...`;
     try {
       const dataSendToken = {
-        sender_id: process.env.BOT_KOMU_ID,
+        sender_id: process.env.UTILITY_BOT_ID,
         sender_name: process.env.BOT_KOMU_NAME,
         receiver_id: message.sender_id,
         amount: +money,
