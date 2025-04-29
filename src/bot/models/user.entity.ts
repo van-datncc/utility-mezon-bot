@@ -64,4 +64,7 @@ export class User {
 
   @Column({ type: 'numeric', nullable: true, default: 0 })
   amount: number;
+
+  @Column({ type: 'numeric', nullable: true, default: 0 })
+  jackPot: number;
 }
