@@ -157,12 +157,14 @@ export class SlotsCommand extends CommandMessage {
           inputs: {
             id: `slots`,
             type: 6,
-            component: results,
-            url_img:
-              'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1745911594825_0spritesheet.png',
-            url_position:
-              'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1745912345493_0spritesheet.json',
-            jackpot: botInfo.amount,
+            component: {
+              url_image:
+                'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1745911594825_0spritesheet.png',
+              url_position:
+                'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1745912345493_0spritesheet.json',
+              jackpot: botInfo.amount,
+              pool: results,
+            },
           },
         },
       ],
