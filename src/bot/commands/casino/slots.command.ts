@@ -189,12 +189,36 @@ export class SlotsCommand extends CommandMessage {
     
     setTimeout(() => {
       const msgResults = {
-        t: `🎰 Kết quả Slots 🎰
-        Jackpot: ${botInfo.jackPot}
-        Bạn đã cược: ${money}
-        Bạn ${win ? 'thắng' : 'thua'}: ${win ? wonAmount : money}`,
+        color: getRandomColor(),
+        title: '🎰 Kết quả Slots 🎰',
+        description: `
+            Jackpot: ${botInfo.jackPot}
+            Bạn đã cược: ${money}
+            Bạn ${win ? 'thắng' : 'thua'}: ${win ? wonAmount : money}
+            `,
+        fields: [
+          {
+            name: '',
+            value: '',
+            inputs: {
+              id: `slots`,
+              type: 6,
+              component: {
+                url_image:
+                  'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1745911594825_0spritesheet.png',
+                url_position:
+                  'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1745912345493_0spritesheet.json',
+                jackpot: botInfo.jackPot,
+                pool: results,
+                repeat: 6,
+                duration: 0.5,
+                isResult: 1,
+              },
+            },
+          },
+        ],
       };
-      messageBot?.update(msgResults);
+      messageBot?.update({ embed: [msgResults] });
     }, 4000);
     return;
   }
