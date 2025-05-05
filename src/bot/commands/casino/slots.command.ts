@@ -154,9 +154,9 @@ export class SlotsCommand extends CommandMessage {
             type: 6,
             component: {
               url_image:
-                'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1745911594825_0spritesheet.png',
+                'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420411527_0spritesheet.png',
               url_position:
-                'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1745912345493_0spritesheet.json',
+                'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420408191_0spritesheet.json',
               jackpot: botInfo.jackPot,
               pool: results,
               repeat: 6,
@@ -186,7 +186,7 @@ export class SlotsCommand extends CommandMessage {
       sender_id: process.env.UTILITY_BOT_ID as string,
     };
     const messageBot = await this.getChannelMessage(msg);
-    
+
     setTimeout(() => {
       const msgResults = {
         color: getRandomColor(),
@@ -205,9 +205,9 @@ export class SlotsCommand extends CommandMessage {
               type: 6,
               component: {
                 url_image:
-                  'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1745911594825_0spritesheet.png',
+                  'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420411527_0spritesheet.png',
                 url_position:
-                  'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1745912345493_0spritesheet.json',
+                  'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420408191_0spritesheet.json',
                 jackpot: botInfo.jackPot,
                 pool: results,
                 repeat: 6,
