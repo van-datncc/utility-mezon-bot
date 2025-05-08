@@ -21,6 +21,9 @@ const slotItems = [
   '6.JPG',
   '7.JPG',
   '8.JPG',
+  '9.JPG',
+  '10.JPG',
+  '11.JPG',
 ];
 
 @Command('slots')
@@ -96,7 +99,14 @@ export class SlotsCommand extends CommandMessage {
 
     let multiplier = 0;
 
-    if (number[0] === number[1] && number[1] === number[2]) {
+    if (
+      number[0] === number[1] &&
+      number[1] === number[2] &&
+      slotItems[number[0]] === '1.JPG'
+    ) {
+      multiplier = 1;
+      win = true;
+    } else if (number[0] === number[1] && number[1] === number[2]) {
       multiplier = 8;
       win = true;
     } else if (
@@ -104,19 +114,12 @@ export class SlotsCommand extends CommandMessage {
       number[0] === number[2] ||
       number[1] === number[2]
     ) {
-      multiplier = 2;
-      win = true;
-    } else if (
-      number[0] === number[1] &&
-      number[1] === number[2] &&
-      slotItems[number[0]] === '1.JPG'
-    ) {
-      multiplier = 1;
+      multiplier = 0.2;
       win = true;
     }
 
     const betMoney = Math.round(money * 0.9);
-    let wonAmount = betMoney * multiplier;
+    let wonAmount = money * multiplier;
     let isJackPot = false;
     if (botInfo?.jackPot < betMoney * multiplier || multiplier === 1) {
       wonAmount = botInfo?.jackPot;
