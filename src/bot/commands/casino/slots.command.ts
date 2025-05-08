@@ -97,33 +97,31 @@ export class SlotsCommand extends CommandMessage {
       results.push(result);
     }
 
-    let multiplier = 0;
-
+    let wonAmount = 0;
+    const betMoney = Math.round(money * 0.9);
+    let isJackPot = false;
     if (
-      number[0] === number[1] &&
+      (number[0] === number[1] &&
       number[1] === number[2] &&
-      slotItems[number[0]] === '1.JPG'
+      slotItems[number[0]] === '1.JPG')
     ) {
-      multiplier = 1;
+      wonAmount = botInfo?.jackPot;
+      isJackPot = true;
       win = true;
     } else if (number[0] === number[1] && number[1] === number[2]) {
-      multiplier = 8;
+      wonAmount = botInfo?.jackPot/2;
       win = true;
     } else if (
       number[0] === number[1] ||
       number[0] === number[2] ||
       number[1] === number[2]
     ) {
-      multiplier = 0.2;
+      wonAmount = money * 0.4;
+      if (botInfo?.jackPot < betMoney * 0.4) {
+        wonAmount = botInfo?.jackPot;
+        isJackPot = true;
+      }
       win = true;
-    }
-
-    const betMoney = Math.round(money * 0.9);
-    let wonAmount = money * multiplier;
-    let isJackPot = false;
-    if (botInfo?.jackPot < betMoney * multiplier || multiplier === 1) {
-      wonAmount = botInfo?.jackPot;
-      isJackPot = true;
     }
     findUser.amount = win
       ? Number(findUser.amount) + Number(wonAmount)
