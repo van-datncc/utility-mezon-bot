@@ -20,7 +20,7 @@ import { MezonBotMessage } from './models/mezonBotMessage.entity';
 import { ListenerMessageButtonClicked } from './listeners/onMessageButtonClicked.listener';
 import { QRCodeCommand } from './commands/qrcode/qrcode.command';
 import { ListenerTokenSend } from './listeners/tokensend.handle';
-import { WithdrawTokenCommand } from './commands/casino/Withdraw';
+// import { WithdrawTokenCommand } from './commands/casino/Withdraw';
 import { AccBalanceCommand } from './commands/casino/accBalance';
 import { SlotsCommand } from './commands/casino/slots.command';
 import { WelcomeMessageHandler } from './listeners/welcomeMessages';
@@ -51,7 +51,7 @@ import { WelcomeMsgInfoCommand } from './commands/welcomeMessages/welcomeMessage
     ExtendersService,
     DynamicCommandService,
     ListenerTokenSend,
-    WithdrawTokenCommand,
+    // WithdrawTokenCommand,
     AccBalanceCommand,
     SlotsCommand,
     WelcomeMessageHandler,
