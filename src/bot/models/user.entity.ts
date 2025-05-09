@@ -67,4 +67,24 @@ export class User {
 
   @Column({ type: 'numeric', nullable: true, default: 0 })
   jackPot: number;
+
+  @Column({ type: 'jsonb', nullable: true, default: {} })
+  roleClan: {
+    [clanId: string]: {
+      roles: {
+        roleId: string;
+        maxLevelPermission: number;
+      }[];
+      roleMax?: string;
+    };
+  };
+  @Column({ type: 'jsonb', nullable: true, default: {} })
+  whitelist: {
+    [clanId: string]: string[];
+  };
+
+  @Column({ type: 'jsonb', nullable: true, default: {} })
+  invitor: {
+    [clanId: string]: string;
+  };
 }

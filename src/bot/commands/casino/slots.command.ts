@@ -97,7 +97,7 @@ export class SlotsCommand extends CommandMessage {
       isJackPot = true;
       win = true;
     } else if (number[0] === number[1] && number[1] === number[2]) {
-      wonAmount = botInfo?.jackPot * 0.3;
+      wonAmount = Math.floor((botInfo?.jackPot || 0) * 0.3);
       win = true;
     } else if (
       number[0] === number[1] ||
@@ -181,7 +181,7 @@ export class SlotsCommand extends CommandMessage {
         color: getRandomColor(),
         title: '🎰 Kết quả Slots 🎰',
         description: `
-            Jackpot: ${botInfo.jackPot}
+            Jackpot: ${Math.floor(botInfo.jackPot)}
             Bạn đã cược: ${money}
             Bạn ${win ? 'thắng' : 'thua'}: ${win ? wonAmount : money}
             `,
@@ -197,7 +197,7 @@ export class SlotsCommand extends CommandMessage {
                   'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420411527_0spritesheet.png',
                 url_position:
                   'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420408191_0spritesheet.json',
-                jackpot: botInfo.jackPot,
+                jackpot: Math.floor(botInfo.jackPot),
                 pool: results,
                 repeat: 6,
                 duration: 0.5,
