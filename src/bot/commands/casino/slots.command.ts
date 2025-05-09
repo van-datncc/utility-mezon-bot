@@ -43,21 +43,6 @@ export class SlotsCommand extends CommandMessage {
     const messageChannel = await this.getChannelMessage(message);
     const money = 5000;
 
-    // if (!args[0]) {
-    //   return messageChannel?.reply({
-    //     t: 'Bạn cần cung cấp số tiền cược.',
-    //     mk: [],
-    //   });
-    // }
-
-    // const money = parseInt(args[0], 10);
-    // if (isNaN(money) || money <= 0) {
-    //   return messageChannel?.reply({
-    //     t: 'Số tiền cược phải là một số dương hợp lệ.',
-    //     mk: [],
-    //   });
-    // }
-
     const findUser = await this.userRepository.findOne({
       where: { user_id: message.sender_id },
     });
@@ -78,7 +63,7 @@ export class SlotsCommand extends CommandMessage {
         ],
       });
 
-    if ((findUser.amount || 0) < money) {
+    if ((findUser.amount || 0) < money || isNaN(findUser.amount)) {
       return await messageChannel?.reply({
         t: EUserError.INVALID_AMOUNT,
         mk: [
