@@ -24,6 +24,9 @@ const slotItems = [
   '9.JPG',
   '10.JPG',
   '11.JPG',
+  '12.JPG',
+  '13.JPG',
+  '14.JPG',
 ];
 
 @Command('slots')
@@ -109,7 +112,7 @@ export class SlotsCommand extends CommandMessage {
       isJackPot = true;
       win = true;
     } else if (number[0] === number[1] && number[1] === number[2]) {
-      wonAmount = botInfo?.jackPot/2;
+      wonAmount = botInfo?.jackPot * 0.3;
       win = true;
     } else if (
       number[0] === number[1] ||
