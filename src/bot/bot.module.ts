@@ -27,6 +27,9 @@ import { WelcomeMessageHandler } from './listeners/welcomeMessages';
 import { WelcomeMessage } from './models/welcomeMessage.entity';
 import { WelcomeMsgCommand } from './commands/welcomeMessages/welcomeMessages.command';
 import { WelcomeMsgInfoCommand } from './commands/welcomeMessages/welcomeMessagesInfo.command';
+import { RoleCommand } from './commands/selfAssignableRoles/role.command';
+import { RoleService } from './commands/selfAssignableRoles/role.service';
+import { WhiteListAddCommand } from './commands/selfAssignableRoles/whiteList';
 
 @Module({
   imports: [
@@ -57,6 +60,9 @@ import { WelcomeMsgInfoCommand } from './commands/welcomeMessages/welcomeMessage
     WelcomeMessageHandler,
     WelcomeMsgCommand,
     WelcomeMsgInfoCommand,
+    RoleCommand,
+    RoleService,
+    WhiteListAddCommand,
   ],
   controllers: [],
 })

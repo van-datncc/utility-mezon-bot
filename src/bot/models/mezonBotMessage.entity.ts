@@ -32,4 +32,7 @@ export class MezonBotMessage {
 
   @Column({ type: 'decimal', default: null })
   createAt: number;
+
+  @Column('text', { array: true, nullable: true, default: null })
+  RoleResult: string[];
 }

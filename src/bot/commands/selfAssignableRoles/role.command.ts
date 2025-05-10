@@ -1,0 +1,83 @@
+import { ChannelMessage, EMarkdownType } from 'mezon-sdk';
+import { Command } from 'src/bot/base/commandRegister.decorator';
+import { EmbedProps } from 'src/bot/constants/configs';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { CommandMessage } from 'src/bot/base/command.abstract';
+import { MezonBotMessage } from 'src/bot/models/mezonBotMessage.entity';
+import { getRandomColor } from 'src/bot/utils/helps';
+import { MezonClientService } from 'src/mezon/services/mezon-client.service';
+import { RoleService } from './role.service';
+import { User } from 'src/bot/models/user.entity';
+
+@Command('role')
+export class RoleCommand extends CommandMessage {
+  constructor(
+    clientService: MezonClientService,
+    @InjectRepository(MezonBotMessage)
+    private mezonBotMessageRepository: Repository<MezonBotMessage>,
+    private roleService: RoleService,
+    @InjectRepository(User) private userRepository: Repository<User>,
+  ) {
+    super(clientService);
+  }
+
+  async execute(args: string[], message: ChannelMessage) {
+    const messageChannel = await this.getChannelMessage(message);
+    const cmds = args.join(' ').split('+');
+    const clan = await this.client.clans.fetch(message.clan_id || '');
+    const response = await clan.listRoles();
+    const options = response.roles?.roles;
+    const bot = await this.userRepository.findOne({
+      where: { user_id: process.env.UTILITY_BOT_ID || '' },
+    });
+    const isSenderWhitelisted = bot?.whitelist?.[message.clan_id || '']?.includes(message.username || '');
+    if (!isSenderWhitelisted) {
+      const content =
+            '```' +
+            `[Role] - You have no permission!` +
+            '```';
+      return await messageChannel?.reply({
+        t: content,
+        mk: [
+          {
+            type: EMarkdownType.TRIPLE,
+            s: 0,
+            e: content.length,
+          },
+        ],
+      });
+    }    
+
+    const colorEmbed = getRandomColor();
+    const embedCompoents = this.roleService.generateEmbedComponents(options);
+    const embed: EmbedProps[] = this.roleService.generateEmbedMessage(
+      cmds[0],
+      colorEmbed,
+      embedCompoents,
+    );
+    const components = this.roleService.generateButtonComponents({
+      ...message,
+      color: colorEmbed,
+    });
+
+    const roleMessageSent = await messageChannel?.reply({
+      embed,
+      components,
+    });
+    if (!roleMessageSent) return;
+    const dataMezonBotMessage = {
+      messageId: roleMessageSent.message_id,
+      userId: message.sender_id,
+      clanId: message.clan_id,
+      isChannelPublic: message.is_public,
+      modeMessage: message.mode,
+      channelId: message.channel_id,
+      content: cmds[0] + '_' + embedCompoents.join('_'),
+      createAt: Date.now(),
+      roleResult: [],
+    };
+    await this.mezonBotMessageRepository.insert(dataMezonBotMessage);
+    return null;
+  }
+}
