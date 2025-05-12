@@ -28,24 +28,11 @@ export class RoleService {
     this.client = this.clientService.getClient();
   }
 
-  private iconList = [
-    '1️⃣ ',
-    '2️⃣ ',
-    '3️⃣ ',
-    '4️⃣ ',
-    '5️⃣ ',
-    '6️⃣ ',
-    '7️⃣ ',
-    '8️⃣ ',
-    '9️⃣ ',
-    '🔟 ',
-  ];
-
   generateEmbedComponents(options, data?) {
     const embedCompoents = options.map((option, index) => {
       const userVoted = data?.[index];
       return {
-        label: `${this.iconList[index] + option.title.trim()} ${userVoted?.length ? `(${userVoted?.length})` : ''}`,
+        label: `${option.title.trim()} ${userVoted?.length ? `(${userVoted?.length})` : ''}`,
         value: JSON.stringify({ label: option.title, value: option.id }),
         style: EButtonMessageStyle.SUCCESS,
         name: option.id,
