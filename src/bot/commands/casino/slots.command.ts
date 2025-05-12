@@ -104,8 +104,8 @@ export class SlotsCommand extends CommandMessage {
       number[0] === number[2] ||
       number[1] === number[2]
     ) {
-      wonAmount = money * 0.4;
-      if (botInfo?.jackPot < betMoney * 0.4) {
+      wonAmount = money * 2;
+      if (botInfo?.jackPot < betMoney * 2) {
         wonAmount = botInfo?.jackPot;
         isJackPot = true;
       }
@@ -140,7 +140,7 @@ export class SlotsCommand extends CommandMessage {
           value: '',
           inputs: {
             id: `slots`,
-            type: 6,
+            type: EMessageComponentType.ANIMATION,
             component: {
               url_image:
                 'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420411527_0spritesheet.png',
@@ -191,7 +191,7 @@ export class SlotsCommand extends CommandMessage {
             value: '',
             inputs: {
               id: `slots`,
-              type: 6,
+              type: EMessageComponentType.ANIMATION,
               component: {
                 url_image:
                   'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420411527_0spritesheet.png',
