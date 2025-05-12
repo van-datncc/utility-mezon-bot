@@ -27,10 +27,27 @@ export class RoleCommand extends CommandMessage {
     const cmds = args.join(' ').split('+');
     const clan = await this.client.clans.fetch(message.clan_id || '');
     const response = await clan.listRoles();
-    const options = response.roles?.roles;
+    const roleList = response.roles?.roles || [];
+    const options = roleList.filter(role => role.id !== '1840654634100723712');
     const bot = await this.userRepository.findOne({
       where: { user_id: process.env.UTILITY_BOT_ID || '' },
     });
+    if (!bot?.roleClan || !bot?.roleClan[message.clan_id || '']) {
+      const content =
+          '```' +
+          `[Role] - You must assign role to bot!` +
+          '```';
+      return await messageChannel?.reply({
+        t: content,
+        mk: [
+          {
+            type: EMarkdownType.TRIPLE,
+            s: 0,
+            e: content.length,
+          },
+        ],
+      });
+    }
     const isSenderWhitelisted = bot?.whitelist?.[message.clan_id || '']?.includes(message.username || '');
     if (!isSenderWhitelisted) {
       const content =

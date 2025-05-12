@@ -10,10 +10,7 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Injectable } from '@nestjs/common';
 import { User } from 'src/bot/models/user.entity';
-import {
-  EmbebButtonType,
-  MEZON_EMBED_FOOTER,
-} from 'src/bot/constants/configs';
+import { EmbebButtonType, MEZON_EMBED_FOOTER } from 'src/bot/constants/configs';
 import { MezonBotMessage } from 'src/bot/models/mezonBotMessage.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { getRandomColor, sleep } from 'src/bot/utils/helps';
@@ -51,6 +48,7 @@ export class RoleService {
         label: `${this.iconList[index] + option.title.trim()} ${userVoted?.length ? `(${userVoted?.length})` : ''}`,
         value: JSON.stringify({ label: option.title, value: option.id }),
         style: EButtonMessageStyle.SUCCESS,
+        name: option.id,
       };
     });
     return embedCompoents;
@@ -68,8 +66,9 @@ export class RoleService {
             value: '',
             inputs: {
               id: `ROLE`,
-              type: 5,
+              type: EMessageComponentType.RADIO,
               component: embedCompoents,
+              max_option: 5,
             },
           },
         ],

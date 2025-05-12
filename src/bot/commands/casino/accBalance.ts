@@ -35,7 +35,7 @@ export class AccBalanceCommand extends CommandMessage {
         ],
       });
 
-    const successMessage = `...💸Số dư của bạn là ${Math.floor(Number(findUser.amount))} token...`;
+    const successMessage = `...💸Số dư của bạn là ${Math.floor(Number(findUser.amount))}đ...`;
 
     return await messageChannel?.reply({
       t: successMessage,
