@@ -1,18 +1,16 @@
 import { OnEvent } from '@nestjs/event-emitter';
-import { ChannelMessage, Events } from 'mezon-sdk';
-import { CommandBase } from '../base/command.handle';
+import { Events } from 'mezon-sdk';
 import { Injectable } from '@nestjs/common';
 import { PollService } from '../commands/poll/poll.service';
 import { RoleService } from '../commands/selfAssignableRoles/role.service';
-import { InjectRepository } from '@nestjs/typeorm';
-import { User } from '../models/user.entity';
-import { Repository } from 'typeorm';
+import { LixiService } from '../lixi/lixi.service';
 
 @Injectable()
 export class ListenerMessageButtonClicked {
   constructor(
     private pollService: PollService,
     private roleService: RoleService,
+    private lixiService: LixiService,
   ) {}
 
   @OnEvent(Events.MessageButtonClicked)
@@ -25,6 +23,8 @@ export class ListenerMessageButtonClicked {
           this.handleSelectPoll(data);
           case 'role':
           this.handleSelectRole(data);
+          case 'lixi':
+          this.handleSelectLixi(data);
         default:
           break;
       }
@@ -44,6 +44,14 @@ export class ListenerMessageButtonClicked {
   async handleSelectRole(data) {
     try {
       await this.roleService.handleSelectRole(data);
+    } catch (error) {
+      console.log('ERORR handleSelectPoll', error);
+    }
+  }
+
+  async handleSelectLixi(data) {
+    try {
+      await this.lixiService.handleSelectLixi(data);
     } catch (error) {
       console.log('ERORR handleSelectPoll', error);
     }

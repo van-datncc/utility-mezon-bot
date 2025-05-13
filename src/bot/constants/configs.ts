@@ -39,4 +39,5 @@ export enum EmbebButtonType {
   APPROVE = 'APPROVE',
   REJECT = 'REJECT',
   SAVE = 'SAVE',
+  LIXI = 'LIXI'
 }
