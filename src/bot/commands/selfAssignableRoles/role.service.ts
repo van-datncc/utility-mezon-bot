@@ -126,7 +126,7 @@ export class RoleService {
       ] = data.button_id.split('_');
       console.log('data: ', data);
       const channel = await this.client.channels.fetch(data.channel_id);
-      const user = await channel.clan.users.fetch(data.user_id);
+      // const user = await channel.clan.users.fetch(data.user_id);
       const messsage = await channel.messages.fetch(data.message_id);
       const clan = await this.client.clans.fetch(clanId);
 
@@ -145,14 +145,15 @@ export class RoleService {
 
       if (typeButtonRes === EmbebButtonType.CANCEL) {
         if (data.user_id !== authId) {
-          const content =
-            '```' +
-            `[Role] - ${title}\n❌You have no permission to cancel this role!` +
-            '```';
-          return await user.sendDM({
-            t: content,
-            mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: content.length }],
-          });
+          // const content =
+          //   '```' +
+          //   `[Role] - ${title}\n❌You have no permission to cancel this role!` +
+          //   '```';
+          // return await user.sendDM({
+          //   t: content,
+          //   mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: content.length }],
+          // });
+          return;
         }
         const textCancel = '```Cancel role successful!```';
         const msgCancel = {

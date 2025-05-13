@@ -30,6 +30,8 @@ import { WelcomeMsgInfoCommand } from './commands/welcomeMessages/welcomeMessage
 import { RoleCommand } from './commands/selfAssignableRoles/role.command';
 import { RoleService } from './commands/selfAssignableRoles/role.service';
 import { WhiteListAddCommand } from './commands/selfAssignableRoles/whiteList';
+import { LixiCommand } from './lixi/lixi.command';
+import { LixiService } from './lixi/lixi.service';
 
 @Module({
   imports: [
@@ -63,6 +65,8 @@ import { WhiteListAddCommand } from './commands/selfAssignableRoles/whiteList';
     RoleCommand,
     RoleService,
     WhiteListAddCommand,
+    LixiCommand,
+    LixiService,
   ],
   controllers: [],
 })

@@ -34,5 +34,15 @@ export class MezonBotMessage {
   createAt: number;
 
   @Column('text', { array: true, nullable: true, default: null })
-  RoleResult: string[];
+  roleResult: string[];
+
+  @Column({ type: 'jsonb', nullable: true, default: () => "'[]'" })
+  lixiResult: [
+    number[],
+    number,
+    {
+      username: string;
+      amount: number;
+    }[],
+  ];
 }
