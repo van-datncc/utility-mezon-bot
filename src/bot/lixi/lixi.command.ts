@@ -1,7 +1,4 @@
-import {
-  ChannelMessage,
-  EMarkdownType,
-} from 'mezon-sdk';
+import { ChannelMessage, EMarkdownType } from 'mezon-sdk';
 import { Command } from 'src/bot/base/commandRegister.decorator';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -28,15 +25,15 @@ export class LixiCommand extends CommandMessage {
 
   async execute(args: string[], message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
-    const raw = args.join(' ');
-    const regex = /\[(.+?)\]:([^\s]+)/g;
+    const raw = args.join('');
+    const regex = /\[(.+?)\]:([^\[\]+]+)/g;
 
     const parsedArgs: Record<string, string> = {};
     let match: RegExpExecArray | null;
 
     while ((match = regex.exec(raw)) !== null) {
       const key = match[1];
-      const value = match[2].match(/^\d+/)?.[0] || '';
+      const value = match[2].trim();
       parsedArgs[key] = value;
     }
 
@@ -91,7 +88,7 @@ export class LixiCommand extends CommandMessage {
         ],
       });
     }
-    
+
     let result = Array(numLixi).fill(minLixi);
 
     let diff = totalAmount - result.reduce((a, b) => a + b, 0);
