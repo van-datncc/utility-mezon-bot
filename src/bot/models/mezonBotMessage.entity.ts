@@ -44,5 +44,6 @@ export class MezonBotMessage {
       username: string;
       amount: number;
     }[],
+    string
   ];
 }
