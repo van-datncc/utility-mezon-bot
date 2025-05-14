@@ -176,6 +176,9 @@ export class LixiService {
       }
 
       if (typeButtonRes === EmbebButtonType.SUBMITCREATE) {
+        if (data.user_id !== authId) {
+          return;
+        }
         let parsedExtraData;
         try {
           parsedExtraData = JSON.parse(data.extra_data);
@@ -242,9 +245,6 @@ export class LixiService {
         }
 
         let result = Array(numLixiValue).fill(minLixiValue);
-        console.log('minLixiValue: ', minLixiValue);
-        console.log('numLixiValue: ', numLixiValue);
-        console.log('totalAmountValue: ', totalAmountValue);
         
         let diff = totalAmountValue - result.reduce((a, b) => a + b, 0);
         while (diff >= 10000) {
