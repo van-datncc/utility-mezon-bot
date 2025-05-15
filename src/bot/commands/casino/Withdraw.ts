@@ -63,7 +63,7 @@ export class WithdrawTokenCommand extends CommandMessage {
     }
 
     findUser.amount = (findUser.amount || 0) - money;
-    console.log('findUser.amount: ', findUser.amount);
+    await this.userRepository.save(findUser);
     const successMessage = `...💸Rút ${money} token thành công...`;
     try {
       const dataSendToken = {
@@ -84,6 +84,8 @@ export class WithdrawTokenCommand extends CommandMessage {
         ],
       });
     } catch (error) {
+      findUser.amount = (findUser.amount || 0) + money;
+      await this.userRepository.save(findUser);
       return await messageChannel?.reply({
         t: EUserError.INVALID_AMOUNT,
         mk: [
@@ -95,6 +97,5 @@ export class WithdrawTokenCommand extends CommandMessage {
         ],
       });
     }
-    await this.userRepository.save(findUser);
   }
 }
