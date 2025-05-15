@@ -7,6 +7,7 @@ import { CommandMessage } from 'src/bot/base/command.abstract';
 import { User } from 'src/bot/models/user.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 
+let withdraw: string[] = []
 @Command('rut')
 export class WithdrawTokenCommand extends CommandMessage {
   constructor(
@@ -18,9 +19,14 @@ export class WithdrawTokenCommand extends CommandMessage {
   }
 
   async execute(args: string[], message: ChannelMessage) {
+    if (withdraw.includes(message.sender_id)) {
+      return;
+    }
+    withdraw.push(message.sender_id)
     const messageChannel = await this.getChannelMessage(message);
     const money = parseInt(args[0], 10);
     if (args[0] === undefined || money <= 0) {
+      withdraw = withdraw.filter(id => id !== message.sender_id);
       return await messageChannel?.reply({
         t: EUserError.INVALID_AMOUNT,
         mk: [
@@ -37,7 +43,8 @@ export class WithdrawTokenCommand extends CommandMessage {
       where: { user_id: message.sender_id },
     });
 
-    if (!findUser)
+    if (!findUser) {
+      withdraw = withdraw.filter(id => id !== message.sender_id);
       return await messageChannel?.reply({
         t: EUserError.INVALID_USER,
         mk: [
@@ -48,8 +55,10 @@ export class WithdrawTokenCommand extends CommandMessage {
           },
         ],
       });
+    }
 
     if ((findUser.amount || 0) < money) {
+      withdraw = withdraw.filter(id => id !== message.sender_id);
       return await messageChannel?.reply({
         t: EUserError.INVALID_AMOUNT,
         mk: [
@@ -83,9 +92,11 @@ export class WithdrawTokenCommand extends CommandMessage {
           },
         ],
       });
+      withdraw = withdraw.filter(id => id !== message.sender_id);
     } catch (error) {
       findUser.amount = (findUser.amount || 0) + money;
       await this.userRepository.save(findUser);
+      withdraw = withdraw.filter(id => id !== message.sender_id);
       return await messageChannel?.reply({
         t: EUserError.INVALID_AMOUNT,
         mk: [
