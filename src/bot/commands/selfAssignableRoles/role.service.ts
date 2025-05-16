@@ -170,6 +170,9 @@ export class RoleService {
       }
 
       if (typeButtonRes === EmbebButtonType.SAVE) {
+        if (data.user_id !== authId) {
+          return;
+        }
         const rawRoleList = JSON.parse(data.extra_data);
         const parsedRoles = rawRoleList.ROLE.map((item) => JSON.parse(item));
         const msgResults = {
