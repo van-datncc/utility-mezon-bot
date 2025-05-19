@@ -6,20 +6,30 @@ import { EUserError } from 'src/bot/constants/error';
 import { CommandMessage } from 'src/bot/base/command.abstract';
 import { User } from 'src/bot/models/user.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
+import { BlockRut } from 'src/bot/models/blockrut.entity';
 
-let withdraw: string[] = []
+let withdraw: string[] = [];
 @Command('rut')
 export class WithdrawTokenCommand extends CommandMessage {
   constructor(
     clientService: MezonClientService,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(BlockRut)
+    private BlockRutRepository: Repository<BlockRut>,
     private dataSource: DataSource,
   ) {
     super(clientService);
   }
 
   async execute(args: string[], message: ChannelMessage) {
+    const blockrut = await this.BlockRutRepository.findOne({
+      where: { id: 1 },
+    });
+    if (blockrut && blockrut.block === true) {
+      console.log('blockrut');
+      return;
+    }
     if (withdraw.includes(message.sender_id)) {
       return;
     }
@@ -29,7 +39,7 @@ export class WithdrawTokenCommand extends CommandMessage {
     const money = parseInt(args[0], 10);
 
     if (args[0] === undefined || money <= 0 || isNaN(money)) {
-      withdraw = withdraw.filter(id => id !== message.sender_id);
+      withdraw = withdraw.filter((id) => id !== message.sender_id);
       return await messageChannel?.reply({
         t: EUserError.INVALID_AMOUNT,
         mk: [
@@ -42,48 +52,51 @@ export class WithdrawTokenCommand extends CommandMessage {
       });
     }
 
-    await this.dataSource.transaction(async (manager) => {
-      const userRepo = manager.getRepository(User);
-      const findUser = await userRepo.findOne({
-        where: { user_id: message.sender_id },
+    await this.dataSource
+      .transaction(async (manager) => {
+        const userRepo = manager.getRepository(User);
+        const findUser = await userRepo.findOne({
+          where: { user_id: message.sender_id },
+        });
+
+        if (!findUser) {
+          throw new Error(EUserError.INVALID_USER);
+        }
+
+        if ((findUser.amount || 0) < money || isNaN(findUser.amount)) {
+          throw new Error(EUserError.INVALID_AMOUNT);
+        }
+
+        findUser.amount = (findUser.amount || 0) - money;
+        await userRepo.save(findUser);
+
+        const dataSendToken = {
+          sender_id: process.env.UTILITY_BOT_ID,
+          sender_name: process.env.BOT_KOMU_NAME,
+          receiver_id: message.sender_id,
+          amount: money,
+        };
+        await this.client.sendToken(dataSendToken);
+
+        const successMessage = `...💸Rút ${money} token thành công...`;
+        await messageChannel?.reply({
+          t: successMessage,
+          mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: successMessage.length }],
+        });
+      })
+      .catch(async (err) => {
+        let errorText = EUserError.INVALID_AMOUNT;
+        if (err.message === EUserError.INVALID_USER) {
+          errorText = EUserError.INVALID_USER;
+        }
+
+        await messageChannel?.reply({
+          t: errorText,
+          mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: errorText.length }],
+        });
+      })
+      .finally(() => {
+        withdraw = withdraw.filter((id) => id !== message.sender_id);
       });
-
-      if (!findUser) {
-        throw new Error(EUserError.INVALID_USER);
-      }
-
-      if ((findUser.amount || 0) < money || isNaN(findUser.amount)) {
-        throw new Error(EUserError.INVALID_AMOUNT);
-      }
-
-      findUser.amount = (findUser.amount || 0) - money;
-      await userRepo.save(findUser);
-
-      const dataSendToken = {
-        sender_id: process.env.UTILITY_BOT_ID,
-        sender_name: process.env.BOT_KOMU_NAME,
-        receiver_id: message.sender_id,
-        amount: money,
-      };
-      await this.client.sendToken(dataSendToken);
-
-      const successMessage = `...💸Rút ${money} token thành công...`;
-      await messageChannel?.reply({
-        t: successMessage,
-        mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: successMessage.length }],
-      });
-    }).catch(async (err) => {
-      let errorText = EUserError.INVALID_AMOUNT;
-      if (err.message === EUserError.INVALID_USER) {
-        errorText = EUserError.INVALID_USER;
-      }
-
-      await messageChannel?.reply({
-        t: errorText,
-        mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: errorText.length }],
-      });
-    }).finally(() => {
-      withdraw = withdraw.filter(id => id !== message.sender_id);
-    });
   }
 }
