@@ -32,6 +32,8 @@ import { RoleService } from './commands/selfAssignableRoles/role.service';
 import { WhiteListAddCommand } from './commands/selfAssignableRoles/whiteList';
 import { LixiCommand } from './lixi/lixi.command';
 import { LixiService } from './lixi/lixi.service';
+import { BlockRut } from './models/blockrut.entity';
+import { BlockRutCommand } from './commands/casino/BlockRut';
 
 @Module({
   imports: [
@@ -39,7 +41,7 @@ import { LixiService } from './lixi/lixi.service';
       dest: './files',
     }),
     DiscoveryModule,
-    TypeOrmModule.forFeature([User, MezonBotMessage, WelcomeMessage]),
+    TypeOrmModule.forFeature([User, MezonBotMessage, WelcomeMessage, BlockRut]),
     HttpModule,
   ],
   providers: [
@@ -67,6 +69,7 @@ import { LixiService } from './lixi/lixi.service';
     WhiteListAddCommand,
     LixiCommand,
     LixiService,
+    BlockRutCommand,
   ],
   controllers: [],
 })
