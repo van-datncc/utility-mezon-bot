@@ -52,7 +52,7 @@ export class WithdrawTokenCommand extends CommandMessage {
         throw new Error(EUserError.INVALID_USER);
       }
 
-      if ((findUser.amount || 0) < money || isNaN(money)) {
+      if ((findUser.amount || 0) < money || isNaN(findUser.amount)) {
         throw new Error(EUserError.INVALID_AMOUNT);
       }
 
