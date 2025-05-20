@@ -71,7 +71,7 @@ export class SicboSchedulerService {
       const randomIndex = Math.floor(Math.random() * 6);
   
       results.push(allResults[randomIndex]);
-      rolls.push(randomIndex);
+      rolls.push(randomIndex+1);
     }
 
     const total = rolls.reduce((sum, val) => sum + val, 0);
