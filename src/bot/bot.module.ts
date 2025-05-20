@@ -32,8 +32,15 @@ import { RoleService } from './commands/selfAssignableRoles/role.service';
 import { WhiteListAddCommand } from './commands/selfAssignableRoles/whiteList';
 import { LixiCommand } from './lixi/lixi.command';
 import { LixiService } from './lixi/lixi.service';
+import { SicboCommand } from './commands/sicbo/sicbo.command';
+import { UserSicbo } from './models/user.sicbo.entity';
+import { Sicbo } from './models/sicbo.entity';
+import { SicboSchedulerService } from './commands/sicbo/sicboScheduler.services';
+import { SicboService } from './commands/sicbo/sicbo.service';
+import { BetInfoCommand } from './commands/sicbo/betinfo.command';
 import { BlockRut } from './models/blockrut.entity';
 import { BlockRutCommand } from './commands/casino/BlockRut';
+import { SicboHistoryCommand } from './commands/sicbo/historySicbo.command';
 
 @Module({
   imports: [
@@ -41,7 +48,7 @@ import { BlockRutCommand } from './commands/casino/BlockRut';
       dest: './files',
     }),
     DiscoveryModule,
-    TypeOrmModule.forFeature([User, MezonBotMessage, WelcomeMessage, BlockRut]),
+    TypeOrmModule.forFeature([User, MezonBotMessage, WelcomeMessage, Sicbo, UserSicbo, BlockRut]),
     HttpModule,
   ],
   providers: [
@@ -69,7 +76,12 @@ import { BlockRutCommand } from './commands/casino/BlockRut';
     WhiteListAddCommand,
     LixiCommand,
     LixiService,
+    SicboCommand,
+    SicboSchedulerService,
+    SicboService,
+    BetInfoCommand,
     BlockRutCommand,
+    SicboHistoryCommand,
   ],
   controllers: [],
 })

@@ -41,4 +41,8 @@ export enum EmbebButtonType {
   SAVE = 'SAVE',
   LIXI = 'LIXI',
   SUBMITCREATE = 'SUBMITCREATE',
+  BET5000 = 'BET5000',
+  BET10000 = 'BET10000',
+  BET20000 = 'BET20000',
+  BET50000 = 'BET50000',
 }
