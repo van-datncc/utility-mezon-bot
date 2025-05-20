@@ -45,7 +45,7 @@ export class BetInfoCommand extends CommandMessage {
     });
 
     if (!findUserSicbo) {
-      const content = `...💸Bạn chưa có đặt cước nào...`;
+      const content = `...💸Bạn chưa có đặt cược nào...`;
       return await messageChannel?.reply({
         t: content,
         mk: [
