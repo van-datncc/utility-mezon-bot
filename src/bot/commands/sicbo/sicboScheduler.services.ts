@@ -57,7 +57,6 @@ export class SicboSchedulerService {
   }
 
   async sicboEnd() {
-    const sicboItems = ['1.png', '2.png', '3.png', '4.png', '5.png', '6.png'];
     const findSicbo = await this.sicboRepository.findOne({
       where: { deleted: false },
     });
@@ -67,12 +66,12 @@ export class SicboSchedulerService {
     const bo = Number(findSicbo.bo || 0);
     const rolls: number[] = [];
     const results: string[][] = [];
+    const allResults = this.sicboService.generateResultsDefault();
     for (let i = 0; i < 3; i++) {
       const randomIndex = Math.floor(Math.random() * 6);
-      const value = parseInt(sicboItems[randomIndex]);
-      const result = [...sicboItems, sicboItems[randomIndex]];
-      results.push(result);
-      rolls.push(value);
+  
+      results.push(allResults[randomIndex]);
+      rolls.push(randomIndex);
     }
 
     const total = rolls.reduce((sum, val) => sum + val, 0);
@@ -140,9 +139,9 @@ export class SicboSchedulerService {
                   type: EMessageComponentType.ANIMATION,
                   component: {
                     url_image:
-                      'https://cdn.mezon.ai/1840678035754323968/1840678035775295488/1779513150169682000/1747215061507_0spritesheet__2_.png',
+                      'https://cdn.mezon.ai/0/1840682626818510848/1779513150169682000/1747725364133_0spritesheet__4_.png',
                     url_position:
-                      'https://cdn.mezon.ai/1840678035754323968/1840678035775295488/1779513150169682000/1747215057985_0spritesheet__3_.json',
+                      'https://cdn.mezon.ai/0/1840682626818510848/1779513150169682000/1747725356415_0spritesheet__5_.json',
                     pool: results,
                     repeat: 6,
                     duration: 0.5,
@@ -186,9 +185,9 @@ export class SicboSchedulerService {
                   type: EMessageComponentType.ANIMATION,
                   component: {
                     url_image:
-                      'https://cdn.mezon.ai/1840678035754323968/1840678035775295488/1779513150169682000/1747215061507_0spritesheet__2_.png',
+                      'https://cdn.mezon.ai/0/1840682626818510848/1779513150169682000/1747725364133_0spritesheet__4_.png',
                     url_position:
-                      'https://cdn.mezon.ai/1840678035754323968/1840678035775295488/1779513150169682000/1747215057985_0spritesheet__3_.json',
+                      'https://cdn.mezon.ai/0/1840682626818510848/1779513150169682000/1747725356415_0spritesheet__5_.json',
                     isResult: 1,
                     pool: results,
                     repeat: 6,

@@ -33,10 +33,10 @@ export class SicboCommand extends CommandMessage {
         channelId: [message.channel_id],
         createAt: Date.now(),
         // endAt: Date.now() + 3600000,
-        endAt: Date.now() + 300000,
+        endAt: Date.now() + 180000,
       };
       await this.sicboRepository.insert(dataSicbo);
-      endAt = Number(Date.now() + 300000)
+      endAt = Number(Date.now() + 180000)
     } else {
       if (!findSicbo.channelId.includes(message.channel_id)) {
         findSicbo.channelId.push(message.channel_id);
@@ -44,7 +44,9 @@ export class SicboCommand extends CommandMessage {
       }
       endAt = Number(findSicbo.endAt)
     }
-    const results: string[][] = this.sicboService.generateResultsDefault()
+    const allResults: string[][] = this.sicboService.generateResultsDefault()
+    const shuffled = allResults.sort(() => 0.5 - Math.random());
+    const results: string[][] = shuffled.slice(0, 3);
 
     const dataMsg = {
       sender_id: message.sender_id,
