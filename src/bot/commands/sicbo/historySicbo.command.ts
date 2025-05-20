@@ -39,9 +39,9 @@ export class SicboHistoryCommand extends CommandMessage {
         },
       });
       if (userBet) {
-        content += `• Ván ${sicbo.id}⇒ Kết quả: ${Number(sicbo.result) === 1 ? 'xỉu' : Number(sicbo.result) === 2 ? 'tài' : 'chưa có kết quả'} thắng\n Cược Tài: ${Number(userBet.sic)}, Xỉu: ${userBet.bo}, Thắng: ${Number(userBet.result)}\n`;
+        content += `• Ván ${sicbo.id}⇒ Kết quả: ${Number(sicbo.result) === 1 ? 'tài' : Number(sicbo.result) === 2 ? 'xỉu' : 'chưa có kết quả'} thắng\n Cược Tài: ${Number(userBet.sic)}, Xỉu: ${userBet.bo}, Thắng: ${Number(userBet.result)}\n`;
       } else {
-        content += `• Ván ${sicbo.id}⇒ Kết quả: ${Number(sicbo.result) === 1 ? 'xỉu' : Number(sicbo.result) === 2 ? 'tài' : 'chưa có kết quả'} thắng\n`;
+        content += `• Ván ${sicbo.id}⇒ Kết quả: ${Number(sicbo.result) === 1 ? 'tài' : Number(sicbo.result) === 2 ? 'xỉu' : 'chưa có kết quả'} thắng\n`;
       }
     }
     const embed = [
