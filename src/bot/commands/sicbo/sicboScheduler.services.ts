@@ -57,6 +57,14 @@ export class SicboSchedulerService {
   }
 
   async sicboEnd() {
+    const sicboItems = [
+      '25.png',
+      '26.png',
+      '27.png',
+      '1.png',
+      '28.png',
+      '29.png',
+    ];
     const findSicbo = await this.sicboRepository.findOne({
       where: { deleted: false },
     });
@@ -66,12 +74,12 @@ export class SicboSchedulerService {
     const bo = Number(findSicbo.bo || 0);
     const rolls: number[] = [];
     const results: string[][] = [];
-    const allResults = this.sicboService.generateResultsDefault();
+    let number = [0, 0, 0];
     for (let i = 0; i < 3; i++) {
-      const randomIndex = Math.floor(Math.random() * 6);
-  
-      results.push(allResults[randomIndex]);
-      rolls.push(randomIndex+1);
+      number[i] = Math.floor(Math.random() * sicboItems.length);
+      const result = [...sicboItems, sicboItems[number[i]]];
+      results.push(result);
+      rolls.push(number[i] + 1);
     }
 
     const total = rolls.reduce((sum, val) => sum + val, 0);
@@ -88,7 +96,6 @@ export class SicboSchedulerService {
         rewardRate = 0;
       } else {
         rewardRate = Number(sic / bo);
-        console.log('rewardRate: ', rewardRate);
       }
     }
     findSicbo.deleted = true;
@@ -102,10 +109,14 @@ export class SicboSchedulerService {
     for (const user of userBets) {
       let reward = 0;
       if (resultBet === 1) {
-        reward = Math.floor(Number(user.sic) * rewardRate * 0.9 + Number(user.sic));
+        reward = Math.floor(
+          Number(user.sic) * rewardRate * 0.9 + Number(user.sic),
+        );
       }
       if (resultBet === 2) {
-        reward = Math.floor(Number(user.bo) * rewardRate * 0.9 + Number(user.bo));
+        reward = Math.floor(
+          Number(user.bo) * rewardRate * 0.9 + Number(user.bo),
+        );
       }
       await this.userSicboRepository.update(
         { userId: user.userId, sicboId: findSicbo.id.toString() },
@@ -129,7 +140,7 @@ export class SicboSchedulerService {
         const embed = [
           {
             color: getRandomColor(),
-            title: `🎲 Sicbo 🎲`,
+            title: `🎲 Kết quả Sicbo ${resultBet === 1 ? 'tài' : 'xỉu'} thắng🎲`,
             fields: [
               {
                 name: '',
@@ -139,9 +150,10 @@ export class SicboSchedulerService {
                   type: EMessageComponentType.ANIMATION,
                   component: {
                     url_image:
-                      'https://cdn.mezon.ai/0/1840682626818510848/1779513150169682000/1747725364133_0spritesheet__4_.png',
+                      'https://cdn.mezon.ai/0/1840682626818510848/1779513150169682000/1747814491095_0spritesheet__7_.png',
                     url_position:
-                      'https://cdn.mezon.ai/0/1840682626818510848/1779513150169682000/1747725356415_0spritesheet__5_.json',
+                      'https://cdn.mezon.ai/0/1840682626818510848/1779513150169682000/1747814483360_0spritesheet__8_.json',
+                    isResult: 1,
                     pool: results,
                     repeat: 3,
                     duration: 1,
@@ -155,50 +167,6 @@ export class SicboSchedulerService {
         if (!msgBot) {
           return;
         }
-        const msg: ChannelMessage = {
-          mode: msgBot.mode,
-          message_id: msgBot.message_id,
-          code: msgBot.code,
-          create_time: msgBot.create_time,
-          update_time: msgBot.update_time,
-          id: msgBot.message_id,
-          clan_id: channel.clan.id,
-          channel_id: msgBot.channel_id,
-          persistent: msgBot.persistence,
-          channel_label: channel.name || '',
-          content: {},
-          sender_id: process.env.UTILITY_BOT_ID as string,
-        };
-        const messageBot = await channel?.messages.fetch(msgBot.message_id!);
-        
-        setTimeout(() => {
-          const msgResults = {
-            color: getRandomColor(),
-            title: `🎲 Kết quả Sicbo ${resultBet === 1 ? 'tài' : 'xỉu'} thắng🎲`,
-            
-            fields: [
-              {
-                name: '',
-                value: '',
-                inputs: {
-                  id: `slots`,
-                  type: EMessageComponentType.ANIMATION,
-                  component: {
-                    url_image:
-                      'https://cdn.mezon.ai/0/1840682626818510848/1779513150169682000/1747725364133_0spritesheet__4_.png',
-                    url_position:
-                      'https://cdn.mezon.ai/0/1840682626818510848/1779513150169682000/1747725356415_0spritesheet__5_.json',
-                    isResult: 1,
-                    pool: results,
-                    repeat: 3,
-                    duration: 1,
-                  },
-                },
-              },
-            ],
-          };
-          messageBot?.update({ embed: [msgResults] });
-        }, 4000);
       }
     }
   }
