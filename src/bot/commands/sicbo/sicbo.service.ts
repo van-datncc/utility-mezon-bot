@@ -319,6 +319,7 @@ export class SicboService {
     const now = new Date();
     const endTime = new Date(endAt);
     const diffMs = endTime.getTime() - now.getTime();
+    const diffSeconds = Math.ceil(diffMs / 1000)
     const diffMinutes = Math.max(0, Math.ceil(diffMs / 60000));
 
     if (sic > 0 && bo > 0) {
@@ -363,7 +364,8 @@ export class SicboService {
                 url_position:
                   'https://cdn.mezon.ai/0/1840682626818510848/1779513150169682000/1747725356415_0spritesheet__5_.json',
                 pool: results,
-                duration: 0.5,
+                duration: 1,
+                repeat: diffSeconds,
               },
             },
           },
