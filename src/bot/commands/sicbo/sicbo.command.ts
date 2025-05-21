@@ -44,9 +44,7 @@ export class SicboCommand extends CommandMessage {
       }
       endAt = Number(findSicbo.endAt)
     }
-    const allResults: string[][] = this.sicboService.generateResultsDefault()
-    const shuffled = allResults.sort(() => 0.5 - Math.random());
-    const results: string[][] = shuffled.slice(0, 3);
+    const results: string[][] = this.sicboService.generateResultsDefault()
 
     const dataMsg = {
       sender_id: message.sender_id,
