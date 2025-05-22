@@ -41,6 +41,7 @@ import { BetInfoCommand } from './commands/sicbo/betinfo.command';
 import { BlockRut } from './models/blockrut.entity';
 import { BlockRutCommand } from './commands/casino/BlockRut';
 import { SicboHistoryCommand } from './commands/sicbo/historySicbo.command';
+import { PollSchedulerService } from './commands/poll/poll-scheduler.service';
 
 @Module({
   imports: [
@@ -82,6 +83,7 @@ import { SicboHistoryCommand } from './commands/sicbo/historySicbo.command';
     BetInfoCommand,
     BlockRutCommand,
     SicboHistoryCommand,
+    PollSchedulerService
   ],
   controllers: [],
 })
