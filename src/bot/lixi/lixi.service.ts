@@ -289,7 +289,7 @@ export class LixiService {
           isNaN(minLixiValue) ||
           minLixiValue % 10000 !== 0 ||
           isNaN(numLixiValue) ||
-          numLixiValue <= 0
+          numLixiValue <= 0 || minLixiValue <= 0 || totalAmountValue <= 0
         ) {
           const content =
             '```' +
