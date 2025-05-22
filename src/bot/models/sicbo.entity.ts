@@ -27,4 +27,11 @@ export class Sicbo {
 
   @Column({ type: 'bigint', default: null })
   endAt: number;
+
+  @Column({ type: 'jsonb', nullable: true, default: [] })
+  message: {
+    id: string;
+    clan_id: string;
+    channel_id: string;
+  }[];
 }

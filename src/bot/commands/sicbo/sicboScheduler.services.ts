@@ -134,35 +134,42 @@ export class SicboSchedulerService {
         }
       }
     }
+    const embed = [
+      {
+        color: getRandomColor(),
+        title: `🎲 Kết quả Sicbo ${resultBet === 1 ? 'tài' : 'xỉu'} thắng🎲`,
+        fields: [
+          {
+            name: '',
+            value: '',
+            inputs: {
+              id: `slots`,
+              type: EMessageComponentType.ANIMATION,
+              component: {
+                url_image:
+                  'https://cdn.mezon.ai/0/1840682626818510848/1779513150169682000/1747814491095_0spritesheet__7_.png',
+                url_position:
+                  'https://cdn.mezon.ai/0/1840682626818510848/1779513150169682000/1747814483360_0spritesheet__8_.json',
+                isResult: 1,
+                pool: results,
+                repeat: 3,
+                duration: 1,
+              },
+            },
+          },
+        ],
+      },
+    ];
+    if (findSicbo?.message.length > 0) {
+      for (const message of findSicbo?.message) {
+        const channel = await this.client.channels.fetch(message.channel_id);
+        const msg = await channel?.messages.fetch(message.id);
+        msg?.update({ embed });
+      }
+    }
     if (channelIds) {
       for (const channelId of channelIds) {
         const channel = await this.client.channels.fetch(channelId);
-        const embed = [
-          {
-            color: getRandomColor(),
-            title: `🎲 Kết quả Sicbo ${resultBet === 1 ? 'tài' : 'xỉu'} thắng🎲`,
-            fields: [
-              {
-                name: '',
-                value: '',
-                inputs: {
-                  id: `slots`,
-                  type: EMessageComponentType.ANIMATION,
-                  component: {
-                    url_image:
-                      'https://cdn.mezon.ai/0/1840682626818510848/1779513150169682000/1747814491095_0spritesheet__7_.png',
-                    url_position:
-                      'https://cdn.mezon.ai/0/1840682626818510848/1779513150169682000/1747814483360_0spritesheet__8_.json',
-                    isResult: 1,
-                    pool: results,
-                    repeat: 3,
-                    duration: 1,
-                  },
-                },
-              },
-            ],
-          },
-        ];
         const msgBot = await channel.send({ embed });
         if (!msgBot) {
           return;
