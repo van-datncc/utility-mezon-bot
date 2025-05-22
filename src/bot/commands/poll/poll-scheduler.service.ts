@@ -1,9 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MezonBotMessage } from 'src/bot/models/mezonBotMessage.entity';
 import { IsNull, LessThan, Not, Repository } from 'typeorm';
 import { PollService } from './poll.service';
-// import { Cron, CronExpression } from '@nestjs/schedule';
 import { CronJob } from 'cron';
 
 @Injectable()
