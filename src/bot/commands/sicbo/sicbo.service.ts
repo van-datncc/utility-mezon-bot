@@ -215,7 +215,6 @@ export class SicboService {
                   'https://cdn.mezon.ai/0/1840682626818510848/1779513150169682000/1747814483360_0spritesheet__8_.json',
                 pool: results,
                 duration: 0.6,
-                repeat: diffSeconds / 0.6,
               },
             },
           },

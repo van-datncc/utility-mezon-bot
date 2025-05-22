@@ -1,7 +1,5 @@
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  ChannelMessage,
-} from 'mezon-sdk';
+import { ChannelMessage } from 'mezon-sdk';
 import { CommandMessage } from 'src/bot/base/command.abstract';
 import { Command } from 'src/bot/base/commandRegister.decorator';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
@@ -27,7 +25,8 @@ export class SicboCommand extends CommandMessage {
     const findSicbo = await this.sicboRepository.findOne({
       where: { deleted: false },
     });
-    let endAt = 0
+    let endAt = 0;
+    let sicboId = findSicbo?.id;
     if (!findSicbo) {
       const dataSicbo = {
         channelId: [message.channel_id],
@@ -35,16 +34,17 @@ export class SicboCommand extends CommandMessage {
         // endAt: Date.now() + 3600000,
         endAt: Date.now() + 180000,
       };
-      await this.sicboRepository.insert(dataSicbo);
-      endAt = Number(Date.now() + 180000)
+      const newSicbo = await this.sicboRepository.save(dataSicbo);
+      sicboId = newSicbo.id;
+      endAt = Number(Date.now() + 180000);
     } else {
       if (!findSicbo.channelId.includes(message.channel_id)) {
         findSicbo.channelId.push(message.channel_id);
         await this.sicboRepository.save(findSicbo);
       }
-      endAt = Number(findSicbo.endAt)
+      endAt = Number(findSicbo.endAt);
     }
-    const results: string[][] = this.sicboService.generateResultsDefault()
+    const results: string[][] = this.sicboService.generateResultsDefault();
 
     const dataMsg = {
       sender_id: message.sender_id,
@@ -53,12 +53,17 @@ export class SicboCommand extends CommandMessage {
       is_public: message.is_public,
       color: getRandomColor(),
       clan_nick: message.clan_nick,
-      username: message.username
-    } 
-    const components = this.sicboService.generateButtonComponents(dataMsg)
-    
-    const resultEmbed = this.sicboService.generateEmbedMessage(findSicbo?.sic || 0, findSicbo?.bo || 0, results, Number(endAt))
-    
+      username: message.username,
+    };
+    const components = this.sicboService.generateButtonComponents(dataMsg);
+
+    const resultEmbed = this.sicboService.generateEmbedMessage(
+      findSicbo?.sic || 0,
+      findSicbo?.bo || 0,
+      results,
+      Number(endAt),
+    );
+
     const messBot = await messageChannel?.reply({
       embed: resultEmbed,
       components,
@@ -66,6 +71,19 @@ export class SicboCommand extends CommandMessage {
     if (!messBot) {
       return;
     }
+    const sicbo = await this.sicboRepository.findOneBy({ id: sicboId });
+    if (!sicbo) {
+      return;
+    }
+    sicbo.message = [
+      ...(sicbo.message || []),
+      {
+        id: messBot.message_id,
+        clan_id: message.clan_id || '',
+        channel_id: message.channel_id,
+      },
+    ];
+    await this.sicboRepository.save(sicbo);
     return;
   }
 }
