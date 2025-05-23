@@ -60,6 +60,7 @@ export class LixiService {
   private lixiClickBuckets: Map<string, Map<number, { users: any[] }>> =
     new Map();
   private lixiTimeouts: Map<string, Map<number, NodeJS.Timeout>> = new Map();
+  private lixiCanceled: Map<string, boolean> = new Map();
   async handleSelectLixi(data) {
     try {
       const key = `${data.message_id}-${data.channel_id}`;
@@ -111,6 +112,7 @@ export class LixiService {
         if (data.user_id !== authId) {
           return;
         }
+        this.lixiCanceled.set(key, true);
         const textCancel = '```Cancel lixi successful!```';
         const msgCancel = {
           t: textCancel,
@@ -132,6 +134,9 @@ export class LixiService {
       }
 
       if (typeButtonRes === EmbebButtonType.LIXI) {
+        if (this.lixiCanceled.get(key)) {
+          return;
+        }
         if (amounts.length === 0) return;
         const hasClicked = Array.from(bucket.values()).some((b) =>
           b.users.some((u) => u.user_id === data.user_id),
@@ -166,6 +171,15 @@ export class LixiService {
         if (!timeoutMap.has(future)) {
           const timeout = setTimeout(
             async () => {
+              if (this.lixiCanceled.get(key)) {
+                this.lixiClickBuckets.delete(key);
+                const tmap = this.lixiTimeouts.get(key);
+                if (tmap) {
+                  for (const t of tmap.values()) clearTimeout(t);
+                  this.lixiTimeouts.delete(key);
+                }
+                return;
+              }
               const bucket = this.lixiClickBuckets.get(key)!;
               const bucketAtTime = bucket.get(future);
               if (!bucketAtTime) return;
@@ -185,12 +199,18 @@ export class LixiService {
                   where: { user_id: u.user_id },
                 });
                 if (!findUser) continue;
+                const currentAmount = Number(findUser.amount);
+                const amountToAdd = Number(chosenAmount);
+                if (isNaN(currentAmount) || isNaN(amountToAdd)) {
+                  continue;
+                }
                 details.push({
                   username: findUser.username,
                   amount: chosenAmount,
                 });
 
-                findUser.amount = Number(findUser.amount) + Number(chosenAmount);
+                findUser.amount =
+                  Number(findUser.amount) + Number(chosenAmount);
                 chosenLixiAmount += chosenAmount;
                 await this.userRepository.save(findUser);
               }
@@ -289,7 +309,9 @@ export class LixiService {
           isNaN(minLixiValue) ||
           minLixiValue % 10000 !== 0 ||
           isNaN(numLixiValue) ||
-          numLixiValue <= 0 || minLixiValue < 0 || totalAmountValue < 0
+          numLixiValue <= 0 ||
+          minLixiValue < 0 ||
+          totalAmountValue < 0
         ) {
           const content =
             '```' +
