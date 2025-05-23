@@ -130,6 +130,9 @@ export class LixiService {
         });
         if (!findUser) return;
         findUser.amount = Number(findUser.amount) + Number(lixiMoney);
+        if (isNaN(findUser.amount)) {
+          return;
+        }
         await this.userRepository.save(findUser);
       }
 
@@ -356,7 +359,7 @@ export class LixiService {
         }
 
         let result = Array(numLixiValue).fill(minLixiValue);
-        
+
         let diff = totalAmountValue - result.reduce((a, b) => a + b, 0);
         while (diff >= 10000) {
           const i = Math.floor(Math.random() * result.length);
