@@ -23,12 +23,16 @@ export class ListenerMessageButtonClicked {
       switch (buttonConfirmType) {
         case 'poll':
           this.handleSelectPoll(data);
-          case 'role':
+          break;
+        case 'role':
           this.handleSelectRole(data);
-          case 'lixi':
+          break;
+        case 'lixi':
           this.handleSelectLixi(data);
-          case 'sicbo':
+          break;
+        case 'sicbo':
           this.handleSelectBet(data);
+          break;
         default:
           break;
       }
