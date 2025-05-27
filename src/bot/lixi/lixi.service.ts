@@ -10,7 +10,7 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Injectable } from '@nestjs/common';
 import { User } from 'src/bot/models/user.entity';
-import { EmbebButtonType } from 'src/bot/constants/configs';
+import { EmbebButtonType, FuncType } from 'src/bot/constants/configs';
 import { MezonBotMessage } from 'src/bot/models/mezonBotMessage.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { getRandomColor } from 'src/bot/utils/helps';
@@ -94,6 +94,17 @@ export class LixiService {
         where: { user_id: data.user_id },
       });
       if (!user) return;
+      const activeBan = Array.isArray(user.ban)
+        ? user.ban.find(
+            (ban) =>
+              (ban.type === FuncType.LIXI || ban.type === FuncType.ALL) &&
+              ban.unBanTime > Math.floor(Date.now() / 1000),
+          )
+        : null;
+
+      if (activeBan) {
+        return;
+      }
 
       const findMessageLixi = await this.mezonBotMessageRepository.findOne({
         where: {
@@ -137,6 +148,9 @@ export class LixiService {
       }
 
       if (typeButtonRes === EmbebButtonType.LIXI) {
+        if (data.user_id === authId) {
+          return;
+        }
         if (this.lixiCanceled.get(key)) {
           return;
         }

@@ -87,4 +87,11 @@ export class User {
   invitor: {
     [clanId: string]: string;
   };
+
+  @Column({ type: 'jsonb', nullable: true, default: [] })
+  ban: {
+    type: string;
+    unBanTime: number;
+    note: string;
+  }[];
 }

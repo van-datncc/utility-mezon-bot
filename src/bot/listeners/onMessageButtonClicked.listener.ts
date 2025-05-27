@@ -5,6 +5,7 @@ import { PollService } from '../commands/poll/poll.service';
 import { RoleService } from '../commands/selfAssignableRoles/role.service';
 import { LixiService } from '../lixi/lixi.service';
 import { SicboService } from '../commands/sicbo/sicbo.service';
+import { TransactionP2PService } from '../commands/transactionP2P/buy.service';
 
 @Injectable()
 export class ListenerMessageButtonClicked {
@@ -13,6 +14,7 @@ export class ListenerMessageButtonClicked {
     private roleService: RoleService,
     private lixiService: LixiService,
     private sicboService: SicboService,
+    private transactionP2PService: TransactionP2PService,
   ) {}
 
   @OnEvent(Events.MessageButtonClicked)
@@ -32,6 +34,12 @@ export class ListenerMessageButtonClicked {
           break;
         case 'sicbo':
           this.handleSelectBet(data);
+          break;
+        case 'buy':
+          this.handleSelectBuy(data);
+          break;
+        case 'confirmBuy':
+          this.handleSelectConfirmBuy(data);
           break;
         default:
           break;
@@ -68,6 +76,22 @@ export class ListenerMessageButtonClicked {
   async handleSelectBet(data) {
     try {
       await this.sicboService.handleSelectBet(data);
+    } catch (error) {
+      console.log('ERORR handleSelectPoll', error);
+    }
+  }
+
+  async handleSelectBuy(data) {
+    try {
+      await this.transactionP2PService.handleSelectBuy(data);
+    } catch (error) {
+      console.log('ERORR handleSelectPoll', error);
+    }
+  }
+
+  async handleSelectConfirmBuy(data) {
+    try {
+      await this.transactionP2PService.handleSelectConfirmBuy(data);
     } catch (error) {
       console.log('ERORR handleSelectPoll', error);
     }

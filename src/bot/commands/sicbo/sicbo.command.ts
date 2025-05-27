@@ -1,5 +1,5 @@
 import { InjectRepository } from '@nestjs/typeorm';
-import { ChannelMessage } from 'mezon-sdk';
+import { ChannelMessage, EMarkdownType } from 'mezon-sdk';
 import { CommandMessage } from 'src/bot/base/command.abstract';
 import { Command } from 'src/bot/base/commandRegister.decorator';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
@@ -7,12 +7,17 @@ import { Repository } from 'typeorm';
 import { getRandomColor } from 'src/bot/utils/helps';
 import { Sicbo } from 'src/bot/models/sicbo.entity';
 import { SicboService } from './sicbo.service';
+import { FuncType } from 'src/bot/constants/configs';
+import { EUserError } from 'src/bot/constants/error';
+import { User } from 'src/bot/models/user.entity';
 
 @Command('sicbo')
 export class SicboCommand extends CommandMessage {
   constructor(
     @InjectRepository(Sicbo)
     private sicboRepository: Repository<Sicbo>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
     clientService: MezonClientService,
     private sicboService: SicboService,
   ) {
@@ -21,7 +26,48 @@ export class SicboCommand extends CommandMessage {
 
   async execute(args: string[], message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
+    const findUser = await this.userRepository.findOne({
+      where: { user_id: message.sender_id },
+    });
+    if (!findUser) {
+      return await messageChannel?.reply({
+        t: EUserError.INVALID_USER,
+        mk: [
+          {
+            type: EMarkdownType.TRIPLE,
+            s: 0,
+            e: EUserError.INVALID_USER.length,
+          },
+        ],
+      });
+    }
+    const activeBan = Array.isArray(findUser.ban)
+      ? findUser.ban.find(
+          (ban) =>
+            (ban.type === FuncType.SICBO || ban.type === FuncType.ALL) &&
+            ban.unBanTime > Math.floor(Date.now() / 1000),
+        )
+      : null;
 
+    if (activeBan) {
+      const unbanDate = new Date(activeBan.unBanTime * 1000);
+      const formattedTime = unbanDate.toLocaleString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        hour12: false,
+      });
+
+      const msgText = `❌ Bạn đang bị cấm thực hiện hành động "sicbo" đến ${formattedTime}`;
+      return await messageChannel?.reply({
+        t: '```' + msgText + '```',
+        mk: [
+          {
+            type: EMarkdownType.TRIPLE,
+            s: 0,
+            e: ('```' + msgText + '```').length,
+          },
+        ],
+      });
+    }
     const findSicbo = await this.sicboRepository.findOne({
       where: { deleted: false },
     });

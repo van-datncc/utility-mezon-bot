@@ -21,6 +21,9 @@ export class AvatarCommand extends CommandMessage {
 
   async execute(args: string[], message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
+    if (message.clan_id === '1779484504377790464') {
+      return;
+    }
     console.log('args', args);
     let messageContent: string;
     let userQuery: string | undefined;
@@ -87,7 +90,7 @@ export class AvatarCommand extends CommandMessage {
         image: {
           url: findUser.avatar,
           width: '400px',
-          height: '400px'
+          height: '400px',
         },
         timestamp: new Date().toISOString(),
         footer: {
