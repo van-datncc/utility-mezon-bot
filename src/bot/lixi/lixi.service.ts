@@ -148,6 +148,9 @@ export class LixiService {
       }
 
       if (typeButtonRes === EmbebButtonType.LIXI) {
+        if (data.user_id === authId) {
+          return;
+        }
         if (this.lixiCanceled.get(key)) {
           return;
         }
