@@ -41,7 +41,13 @@ import { BetInfoCommand } from './commands/sicbo/betinfo.command';
 import { BlockRut } from './models/blockrut.entity';
 import { BlockRutCommand } from './commands/casino/BlockRut';
 import { SicboHistoryCommand } from './commands/sicbo/historySicbo.command';
+import { BanCommand } from './commands/ban/ban';
 import { PollSchedulerService } from './commands/poll/poll-scheduler.service';
+import { TransactionP2P } from './models/transactionP2P.entity';
+import { TransactionP2PService } from './commands/transactionP2P/buy.service';
+import { BuyCommand } from './commands/transactionP2P/buy.command';
+import { MyBuyCommand } from './commands/transactionP2P/myListBuy.command';
+import { ListBuyCommand } from './commands/transactionP2P/listBuy.command';
 
 @Module({
   imports: [
@@ -49,7 +55,15 @@ import { PollSchedulerService } from './commands/poll/poll-scheduler.service';
       dest: './files',
     }),
     DiscoveryModule,
-    TypeOrmModule.forFeature([User, MezonBotMessage, WelcomeMessage, Sicbo, UserSicbo, BlockRut]),
+    TypeOrmModule.forFeature([
+      User,
+      MezonBotMessage,
+      WelcomeMessage,
+      Sicbo,
+      UserSicbo,
+      BlockRut,
+      TransactionP2P,
+    ]),
     HttpModule,
   ],
   providers: [
@@ -83,7 +97,12 @@ import { PollSchedulerService } from './commands/poll/poll-scheduler.service';
     BetInfoCommand,
     BlockRutCommand,
     SicboHistoryCommand,
-    PollSchedulerService
+    BanCommand,
+    PollSchedulerService,
+    TransactionP2PService,
+    BuyCommand,
+    MyBuyCommand,
+    ListBuyCommand,
   ],
   controllers: [],
 })

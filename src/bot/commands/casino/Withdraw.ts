@@ -7,6 +7,7 @@ import { CommandMessage } from 'src/bot/base/command.abstract';
 import { User } from 'src/bot/models/user.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { BlockRut } from 'src/bot/models/blockrut.entity';
+import { FuncType } from 'src/bot/constants/configs';
 
 let withdraw: string[] = [];
 @Command('rut')
@@ -23,6 +24,53 @@ export class WithdrawTokenCommand extends CommandMessage {
   }
 
   async execute(args: string[], message: ChannelMessage) {
+    const messageChannel = await this.getChannelMessage(message);
+    const findUser = await this.userRepository.findOne({
+      where: { user_id: message.sender_id },
+    });
+
+    if (!findUser) {
+      return await messageChannel?.reply({
+        t: EUserError.INVALID_USER,
+        mk: [
+          {
+            type: EMarkdownType.TRIPLE,
+            s: 0,
+            e: EUserError.INVALID_USER.length,
+          },
+        ],
+      });
+    }
+    const activeBan = Array.isArray(findUser.ban)
+      ? findUser.ban.find(
+          (ban) =>
+            (ban.type === FuncType.RUT || ban.type === FuncType.ALL) &&
+            ban.unBanTime > Math.floor(Date.now() / 1000),
+        )
+      : null;
+
+    if (activeBan) {
+      const unbanDate = new Date(activeBan.unBanTime * 1000);
+      const formattedTime = unbanDate.toLocaleString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        hour12: false,
+      });
+
+      const msgText = `❌ Bạn đang bị cấm thực hiện hành động "rut" đến ${formattedTime}`;
+      return await messageChannel?.reply({
+        t: '```' + msgText + '```',
+        mk: [
+          {
+            type: EMarkdownType.TRIPLE,
+            s: 0,
+            e: ('```' + msgText + '```').length,
+          },
+        ],
+      });
+    }
+
+    if (!findUser) {
+    }
     const blockrut = await this.BlockRutRepository.findOne({
       where: { id: 1 },
     });
@@ -35,7 +83,6 @@ export class WithdrawTokenCommand extends CommandMessage {
     }
 
     withdraw.push(message.sender_id);
-    const messageChannel = await this.getChannelMessage(message);
     const money = parseInt(args[0], 10);
 
     if (args[0] === undefined || money <= 0 || isNaN(money)) {

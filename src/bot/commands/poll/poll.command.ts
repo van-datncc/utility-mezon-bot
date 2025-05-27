@@ -22,6 +22,9 @@ export class PollCommand extends CommandMessage {
 
   async execute(args: string[], message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
+    if (message.clan_id === '1779484504377790464') {
+      return;
+    }
     let messageContent = '';
     const cmds = args.join(' ').split('+');
     const options = cmds.slice(1).filter(Boolean);

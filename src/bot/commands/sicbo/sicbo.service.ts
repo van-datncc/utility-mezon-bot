@@ -10,7 +10,11 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Injectable } from '@nestjs/common';
 import { User } from 'src/bot/models/user.entity';
-import { EmbebButtonType, MEZON_EMBED_FOOTER } from 'src/bot/constants/configs';
+import {
+  EmbebButtonType,
+  FuncType,
+  MEZON_EMBED_FOOTER,
+} from 'src/bot/constants/configs';
 import { MezonBotMessage } from 'src/bot/models/mezonBotMessage.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { getRandomColor } from 'src/bot/utils/helps';
@@ -276,6 +280,18 @@ export class SicboService {
         where: { user_id: data.user_id },
       });
       if (!findUser) return;
+      const activeBan = Array.isArray(findUser.ban)
+        ? findUser.ban.find(
+            (ban) =>
+              (ban.type === FuncType.SICBO || ban.type === FuncType.ALL) &&
+              ban.unBanTime > Math.floor(Date.now() / 1000),
+          )
+        : null;
+
+      if (activeBan) {
+        return;
+      }
+
       if (typeButtonRes === EmbebButtonType.BET5000) {
         const money = 5000;
         // trừ tiền user

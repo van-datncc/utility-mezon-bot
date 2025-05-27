@@ -24,7 +24,9 @@ export class QRCodeCommand extends CommandMessage {
   async execute(args: string[], message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
     let userQuery: string = '';
-
+    if (message.clan_id === '1779484504377790464') {
+      return;
+    }
     if (Array.isArray(message.references) && message.references.length) {
       userQuery = message.references[0].message_sender_username!;
     } else {
@@ -91,7 +93,7 @@ export class QRCodeCommand extends CommandMessage {
         image: {
           url: qrCodeDataUrl,
           width: '300px',
-          height: '300px'
+          height: '300px',
         },
         timestamp: new Date().toISOString(),
         footer: MEZON_EMBED_FOOTER,

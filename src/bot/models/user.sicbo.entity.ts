@@ -25,4 +25,7 @@ export class UserSicbo {
   
   @Column({ type: 'numeric', nullable: true, default: 0 })
   result: number;
+
+  @Column({ nullable: true, default: false })
+  deleted: boolean;
 }

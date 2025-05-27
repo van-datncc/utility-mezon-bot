@@ -11,6 +11,7 @@ import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { Repository } from 'typeorm';
 import { getRandomColor } from 'src/bot/utils/helps';
 import { EUserError } from 'src/bot/constants/error';
+import { FuncType } from 'src/bot/constants/configs';
 
 const slotItems = [
   '1.JPG',
@@ -51,7 +52,7 @@ export class SlotsCommand extends CommandMessage {
       where: { user_id: process.env.UTILITY_BOT_ID },
     });
 
-    if (!findUser || !botInfo)
+    if (!findUser || !botInfo) {
       return await messageChannel?.reply({
         t: EUserError.INVALID_USER,
         mk: [
@@ -62,6 +63,35 @@ export class SlotsCommand extends CommandMessage {
           },
         ],
       });
+    }
+
+    const activeBan = Array.isArray(findUser.ban)
+      ? findUser.ban.find(
+          (ban) =>
+            (ban.type === FuncType.SLOTS || ban.type === FuncType.ALL) &&
+            ban.unBanTime > Math.floor(Date.now() / 1000),
+        )
+      : null;
+
+    if (activeBan) {
+      const unbanDate = new Date(activeBan.unBanTime * 1000);
+      const formattedTime = unbanDate.toLocaleString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        hour12: false,
+      });
+
+      const msgText = `❌ Bạn đang bị cấm thực hiện hành động "slots" đến ${formattedTime}`;
+      return await messageChannel?.reply({
+        t: '```' + msgText + '```',
+        mk: [
+          {
+            type: EMarkdownType.TRIPLE,
+            s: 0,
+            e: ('```' + msgText + '```').length,
+          },
+        ],
+      });
+    }
 
     if ((findUser.amount || 0) < money || isNaN(findUser.amount)) {
       return await messageChannel?.reply({
@@ -89,9 +119,9 @@ export class SlotsCommand extends CommandMessage {
     const betMoney = Math.round(money * 0.9);
     let isJackPot = false;
     if (
-      (number[0] === number[1] &&
+      number[0] === number[1] &&
       number[1] === number[2] &&
-      slotItems[number[0]] === '1.JPG')
+      slotItems[number[0]] === '1.JPG'
     ) {
       wonAmount = botInfo?.jackPot;
       isJackPot = true;

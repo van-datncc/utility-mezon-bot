@@ -45,4 +45,16 @@ export enum EmbebButtonType {
   BET10000 = 'BET10000',
   BET20000 = 'BET20000',
   BET50000 = 'BET50000',
+  DELETE = 'DELETE',
+  SELL = 'SELL',
+  DONE = 'DONE'
+}
+
+export enum FuncType {
+  RUT = 'rut',
+  SLOTS = 'slots',
+  LIXI = 'lixi',
+  SICBO = 'sicbo',
+  TRANSACTION = 'transaction',
+  ALL = 'all'
 }
