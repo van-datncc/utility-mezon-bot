@@ -282,7 +282,6 @@ export class TransactionP2PService {
         const transactions = await this.transactionP2PRepository.find({
           where: { clanId: clanId || '', buyerId: authId, deleted: false },
         });
-        const actuallyDeletedIds: string[] = [];
 
         for (const buyOrder of parsedOrders) {
           const tx = transactions.find((t) => t.id === buyOrder.id);
@@ -296,12 +295,11 @@ export class TransactionP2PService {
             },
             { deleted: true },
           );
-          actuallyDeletedIds.push(buyOrder.id);
         }
-
-        const remainingTransactions = transactions.filter(
-          (tx) => !actuallyDeletedIds.includes(tx.id.toString()),
-        );
+        
+        const remainingTransactions = await this.transactionP2PRepository.find({
+          where: { clanId: clanId || '', buyerId: authId, deleted: false },
+        });
         const embedCompoents = this.generateEmbedComponents(
           remainingTransactions,
         );
@@ -550,7 +548,7 @@ export class TransactionP2PService {
           {
             color,
             title: `[Sell]`,
-            description: `Bạn đã yêu cầu hủy giao dịch ${transacionId} với ${seller.username}, hãy liên hệ với họ để họ xác nhận`,
+            description: `Bạn đã yêu cầu hủy giao dịch ${transacionId} với ${buyer.username}, hãy liên hệ với họ để họ xác nhận`,
             timestamp: new Date().toISOString(),
             footer: MEZON_EMBED_FOOTER,
           },
