@@ -283,15 +283,6 @@ export class LixiService {
                 }
               } else {
                 await messsage.update({ embed: [resultEmbed], components });
-                bucket.delete(future);
-                timeoutMap.delete(future);
-
-                if (timeoutMap.size === 0) {
-                  this.lixiTimeouts.delete(key);
-                }
-                if (bucket.size === 0) {
-                  this.lixiClickBuckets.delete(key);
-                }
               }
             },
             (future - now) * 1000,

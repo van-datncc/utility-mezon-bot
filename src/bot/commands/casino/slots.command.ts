@@ -80,7 +80,7 @@ export class SlotsCommand extends CommandMessage {
         hour12: false,
       });
 
-      const msgText = `❌ Bạn đang bị cấm thực hiện hành động "slots" đến ${formattedTime}`;
+      const msgText = `❌ Bạn đang bị cấm thực hiện hành động "slots" đến ${formattedTime}, hãy liên hệ admin để mua vé unban`;
       return await messageChannel?.reply({
         t: '```' + msgText + '```',
         mk: [

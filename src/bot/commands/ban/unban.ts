@@ -1,15 +1,14 @@
 import { ChannelMessage, EMarkdownType } from 'mezon-sdk';
 import { Command } from 'src/bot/base/commandRegister.decorator';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { CommandMessage } from 'src/bot/base/command.abstract';
 import { User } from 'src/bot/models/user.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
-import { BlockRut } from 'src/bot/models/blockrut.entity';
 import { FuncType } from 'src/bot/constants/configs';
 
-@Command('ban')
-export class BanCommand extends CommandMessage {
+@Command('unban')
+export class UnbanCommand extends CommandMessage {
   constructor(
     clientService: MezonClientService,
     @InjectRepository(User) private userRepository: Repository<User>,
@@ -22,20 +21,15 @@ export class BanCommand extends CommandMessage {
     const messageChannel = await this.getChannelMessage(message);
     const content = args.join(' ');
     const usernameMatch = content.match(/\[username\]:\s*([^\[\]]+)/);
-    console.log('usernameMatch: ', usernameMatch);
     const typeMatch = content.match(/\[type\]:\s*(\w+)/);
-    const timeMatch = content.match(/\[time\]:\s*(\d+)([smhd])/);
-    const noteMatch = content.match(/\[note\]:\s*(.+)/);
 
-    if (!typeMatch || !timeMatch || !usernameMatch) {
+    if (!typeMatch || !usernameMatch) {
       const content =
         '```' +
-        `[Ban]
+        `[Unban]
         - [username]: tên người bị ban
         - [type]: ban chức năng (rut, slots, lixi, sicbo, transaction, all)
-        - [time]: thời gian ban (đơn vị: s, m, h, d)
-        - [note]: lý do ban
-        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: rut [time]: 5m [note]: phá hoại` +
+        Ex: *unban [username]: a.nguyenvan, b.phamquoc [type]: rut` +
         '```';
 
       return await messageChannel?.reply({
@@ -52,48 +46,9 @@ export class BanCommand extends CommandMessage {
     const usernameRaw = usernameMatch[1].trim();
     const usernames = usernameRaw.split(',').map((u) => u.trim());
     const type = typeMatch[1];
-    const timeValue = parseInt(timeMatch[1], 10);
-    const unit = timeMatch[2];
-    const note = noteMatch ? noteMatch[1] : '';
 
     const now = Math.floor(Date.now() / 1000);
-    let duration = 0;
 
-    switch (unit) {
-      case 's':
-        duration = timeValue;
-        break;
-      case 'm':
-        duration = timeValue * 60;
-        break;
-      case 'h':
-        duration = timeValue * 3600;
-        break;
-      case 'd':
-        duration = timeValue * 86400;
-        break;
-      default:
-        const content =
-          '```' +
-          `[Ban]
-        - [username]: tên người bị ban
-        - [type]: ban chức năng (rut, slots, lixi, sicbo, transaction, all)
-        - [time]: thời gian ban (đơn vị: s, m, h, d)
-        - [note]: lý do ban
-        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: rut [time]: 5m [note]: phá hoại` +
-          '```';
-
-        return await messageChannel?.reply({
-          t: content,
-          mk: [
-            {
-              type: EMarkdownType.TRIPLE,
-              s: 0,
-              e: content.length + 6,
-            },
-          ],
-        });
-    }
     let funcType = '';
     switch (type) {
       case FuncType.RUT:
@@ -117,12 +72,10 @@ export class BanCommand extends CommandMessage {
       default:
         const content =
           '```' +
-          `[Ban]
+          `[unban]
         - [username]: tên người bị ban
         - [type]: ban chức năng (rut, slots, lixi, sicbo, transaction, all)
-        - [time]: thời gian ban (đơn vị: s, m, h, d)
-        - [note]: lý do ban
-        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: rut [time]: 5m [note]: phá hoại` +
+        Ex: *unban [username]: a.nguyenvan, b.phamquoc [type]: rut` +
           '```';
 
         return await messageChannel?.reply({
@@ -137,8 +90,7 @@ export class BanCommand extends CommandMessage {
         });
     }
 
-    const expiresAt = now + duration;
-    let userban: string[] = [];
+    let unbanned: string[] = [];
     for (const username of usernames) {
       const findUser = await this.userRepository.findOne({
         where: {
@@ -149,28 +101,29 @@ export class BanCommand extends CommandMessage {
       if (!findUser) {
         continue;
       }
+
       const bans = Array.isArray(findUser.ban) ? findUser.ban : [];
-
-      const idx = bans.findIndex((b) => b.type === funcType);
-
-      if (idx >= 0) {
-        bans[idx].unBanTime = expiresAt;
-        bans[idx].note = note;
-      } else {
-        bans.push({
-          type: funcType,
-          unBanTime: expiresAt,
-          note: note,
-        });
+      if (funcType === FuncType.ALL) {
+        findUser.ban = [];
+        await this.userRepository.save(findUser);
+        unbanned.push(username);
+        continue;
       }
-      findUser.ban = bans;
+      const updatedBans = bans.filter((b) => b.type !== funcType);
+      if (updatedBans.length === bans.length) {
+        continue;
+      }
+
+      findUser.ban = updatedBans;
       await this.userRepository.save(findUser);
-      userban.push(username);
+      unbanned.push(username);
     }
+    
+    console.log('unbanned: ', unbanned);
     let contentMsg = '';
-    if (userban.length > 0) {
+    if (unbanned.length > 0) {
       contentMsg =
-        '```' + `${userban.join(', ')} đã bị ban ${funcType}` + '```';
+        '```' + `${unbanned.join(', ')} đã được unban ${funcType}` + '```';
       return await messageChannel?.reply({
         t: contentMsg,
         mk: [
