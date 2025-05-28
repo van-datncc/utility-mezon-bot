@@ -79,8 +79,8 @@ export class SlotsCommand extends CommandMessage {
         timeZone: 'Asia/Ho_Chi_Minh',
         hour12: false,
       });
-
-      const msgText = `❌ Bạn đang bị cấm thực hiện hành động "slots" đến ${formattedTime}, hãy liên hệ admin để mua vé unban`;
+      const content = activeBan.note
+      const msgText = `❌ Bạn đang bị cấm thực hiện hành động "slots" đến ${formattedTime}\n   - Lý do: ${content}\n NOTE: Hãy liên hệ admin để mua vé unban`;
       return await messageChannel?.reply({
         t: '```' + msgText + '```',
         mk: [
