@@ -48,6 +48,7 @@ import { TransactionP2PService } from './commands/transactionP2P/buy.service';
 import { BuyCommand } from './commands/transactionP2P/buy.command';
 import { MyBuyCommand } from './commands/transactionP2P/myListBuy.command';
 import { ListBuyCommand } from './commands/transactionP2P/listBuy.command';
+import { UnbanCommand } from './commands/ban/unban';
 
 @Module({
   imports: [
@@ -103,6 +104,7 @@ import { ListBuyCommand } from './commands/transactionP2P/listBuy.command';
     BuyCommand,
     MyBuyCommand,
     ListBuyCommand,
+    UnbanCommand
   ],
   controllers: [],
 })

@@ -14,7 +14,7 @@ import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { LixiService } from './lixi.service';
 import { User } from '../models/user.entity';
 import { EUserError } from '../constants/error';
-import { EmbedProps, MEZON_EMBED_FOOTER } from '../constants/configs';
+import { EmbedProps, FuncType, MEZON_EMBED_FOOTER } from '../constants/configs';
 
 @Command('lixi')
 export class LixiCommand extends CommandMessage {
@@ -24,7 +24,6 @@ export class LixiCommand extends CommandMessage {
     private mezonBotMessageRepository: Repository<MezonBotMessage>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
-    private lixiService: LixiService,
   ) {
     super(clientService);
   }
@@ -42,6 +41,50 @@ export class LixiCommand extends CommandMessage {
             type: EMarkdownType.TRIPLE,
             s: 0,
             e: content.length + 6,
+          },
+        ],
+      });
+    }
+
+    const findUser = await this.userRepository.findOne({
+      where: { user_id: message.sender_id },
+    });
+    if (!findUser) {
+      return await messageChannel?.reply({
+        t: EUserError.INVALID_USER,
+        mk: [
+          {
+            type: EMarkdownType.TRIPLE,
+            s: 0,
+            e: EUserError.INVALID_USER.length,
+          },
+        ],
+      });
+    }
+
+    const activeBan = Array.isArray(findUser.ban)
+      ? findUser.ban.find(
+          (ban) =>
+            (ban.type === FuncType.LIXI || ban.type === FuncType.ALL) &&
+            ban.unBanTime > Math.floor(Date.now() / 1000),
+        )
+      : null;
+
+    if (activeBan) {
+      const unbanDate = new Date(activeBan.unBanTime * 1000);
+      const formattedTime = unbanDate.toLocaleString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        hour12: false,
+      });
+
+      const msgText = `❌ Bạn đang bị cấm thực hiện hành động "lixi" đến ${formattedTime}, hãy liên hệ admin để mua vé unban`;
+      return await messageChannel?.reply({
+        t: '```' + msgText + '```',
+        mk: [
+          {
+            type: EMarkdownType.TRIPLE,
+            s: 0,
+            e: ('```' + msgText + '```').length,
           },
         ],
       });
