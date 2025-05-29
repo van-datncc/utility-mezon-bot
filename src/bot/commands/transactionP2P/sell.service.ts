@@ -5,7 +5,7 @@ import {
   MezonClient,
 } from 'mezon-sdk';
 
-import { IsNull, Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Injectable } from '@nestjs/common';
 import { User } from 'src/bot/models/user.entity';
@@ -22,7 +22,7 @@ import { TransactionP2P } from 'src/bot/models/transactionP2P.entity';
 // import { EUserError } from '../constants/error';
 
 @Injectable()
-export class BuyService {
+export class SellService {
   private client: MezonClient;
   private blockEditedList: string[] = [];
   constructor(
@@ -39,18 +39,18 @@ export class BuyService {
   generateEmbedComponents(options, data?) {
     const embedCompoents = options.map((option, index) => {
       return {
-        label: `${option.note.trim() ? `${option.note.trim()}` : 'buy token'}`,
+        label: `${option.note.trim() ? `${option.note.trim()}` : 'sell token'}`,
         value: JSON.stringify({
           note: option.note,
           id: option.id,
           amount: option.amount,
-          buyerId: option.buyerId,
-          buyerName: option.buyerName,
+          sellerId: option.sellerId,
+          sellerName: option.sellerName,
         }),
-        description: `Amount: ${option?.amount ? `${option?.amount.toLocaleString()}đ` : '0'}\n By: ${option.buyerName} ${option.amountLock.username ? '\n Đang được giao dịch' : ''}`,
+        description: `Amount: ${option?.amount ? `${option?.amount.toLocaleString()}đ` : '0'}\n By: ${option.amountLock.username} ${option.buyerId ? '\n Đang được giao dịch' : ''}`,
         style: EButtonMessageStyle.SUCCESS,
         name: option.id,
-        disabled: option.amountLock.username ? true : false,
+        disabled: option.buyerId ? true : false,
       };
     });
     return embedCompoents;
@@ -60,14 +60,14 @@ export class BuyService {
     return [
       {
         color,
-        title: `[MyBuyOrder] \n ${title}`,
+        title: `[MySellOrder] \n ${title}`,
         description: 'Select the option you want.',
         fields: [
           {
             name: '',
             value: '',
             inputs: {
-              id: `MyBuyOrder`,
+              id: `MySellOrder`,
               type: EMessageComponentType.RADIO,
               component: embedCompoents,
               // max_option: 5,
@@ -80,18 +80,18 @@ export class BuyService {
     ];
   }
 
-  generateEmbedMsgListBuy(title: string, color: string, embedCompoents) {
+  generateEmbedMsgListSell(title: string, color: string, embedCompoents) {
     return [
       {
         color,
-        title: `[ListBuyOrder]`,
+        title: `[ListSellOrder]`,
         description: 'Select the option you want sell',
         fields: [
           {
             name: '',
             value: '',
             inputs: {
-              id: `MyBuyOrder`,
+              id: `MySellOrder`,
               type: EMessageComponentType.RADIO,
               component: embedCompoents,
               // max_option: 5,
@@ -104,20 +104,20 @@ export class BuyService {
     ];
   }
 
-  generateEmbedComponentListBuys(options, data?) {
+  generateEmbedComponentListSells(options, data?) {
     const embedCompoents = options.map((option, index) => {
       return {
-        label: `${option.note.trim() ? `${option.note.trim()}` : 'buy token'}`,
+        label: `${option.note.trim() ? `${option.note.trim()}` : 'sell token'}`,
         value: JSON.stringify({
           note: option.note,
           id: option.id,
           amount: option.amount,
-          buyerId: option.buyerId,
-          buyerName: option.buyerName,
+          sellerId: option.sellerId,
+          sellerName: option.sellerName,
         }),
-        description: `Amount: ${option?.amount ? `${option?.amount.toLocaleString()}đ` : '0'} \n By: ${option.buyerName} ${option.amountLock.username ? '\n Đang được giao dịch' : ''}`,
+        description: `Amount: ${option?.amount ? `${option?.amount.toLocaleString()}đ` : '0'} \n By: ${option.amountLock.username} ${option.buyerId ? '\n Đang được giao dịch' : ''}`,
         style: EButtonMessageStyle.SUCCESS,
-        disabled: option.amountLock.username ? true : false,
+        disabled: option.buyerId ? true : false,
       };
     });
     return embedCompoents;
@@ -129,7 +129,7 @@ export class BuyService {
       {
         components: [
           {
-            id: `buy_CANCEL_${data.sender_id}_${data.clan_id}_${data.mode}_${data.is_public}_${data?.color}_${data.clan_nick || data.username}`,
+            id: `sell_CANCEL_${data.sender_id}_${data.clan_id}_${data.mode}_${data.is_public}_${data?.color}_${data.clan_nick || data.username}`,
             type: EMessageComponentType.BUTTON,
             component: {
               label: `Cancel`,
@@ -137,7 +137,7 @@ export class BuyService {
             },
           },
           {
-            id: `buy_${type}_${data.sender_id}_${data.clan_id}_${data.mode}_${data.is_public}_${data?.color}_${data.clan_nick || data.username}`,
+            id: `sell_${type}_${data.sender_id}_${data.clan_id}_${data.mode}_${data.is_public}_${data?.color}_${data.clan_nick || data.username}`,
             type: EMessageComponentType.BUTTON,
             component: {
               label: `${data.type}`,
@@ -149,7 +149,7 @@ export class BuyService {
     ];
   }
 
-  async handleSelectBuy(data) {
+  async handleSelectSell(data) {
     try {
       const key = `${data.message_id}-${data.channel_id}`;
 
@@ -165,7 +165,7 @@ export class BuyService {
         msgId,
       ] = data.button_id.split('_');
       const channel = await this.client.channels.fetch(data.channel_id);
-      const seller = await channel.clan.users.fetch(data.user_id);
+      const buyer = await channel.clan.users.fetch(data.user_id);
       const messsage = await channel.messages.fetch(data.message_id);
       const findUser = await this.userRepository.findOne({
         where: { user_id: data.user_id },
@@ -199,6 +199,7 @@ export class BuyService {
         if (data.user_id !== authId) {
           return;
         }
+
         const textCancel = '```Cancel buy successful!```';
         const msgCancel = {
           t: textCancel,
@@ -223,8 +224,8 @@ export class BuyService {
         } catch (error) {
           throw new Error('Invalid JSON in extra_data');
         }
-        const description = `buy-${msgId}-description-ip`;
-        const totalAmount = `buy-${msgId}-totalAmount-ip`;
+        const description = `sell-${msgId}-description-ip`;
+        const totalAmount = `sell-${msgId}-totalAmount-ip`;
         const descriptionValue = parsedExtraData[description] || '';
         const totalAmountValue = Number(parsedExtraData[totalAmount]);
 
@@ -235,8 +236,8 @@ export class BuyService {
         ) {
           const content =
             '```' +
-            `[buy]
-        - [totalAmount]: Tổng số tiền buy phải là số tự nhiên lớn hơn 0` +
+            `[Sell]
+        - [totalAmount]: Tổng số tiền sell phải là số tự nhiên lớn hơn 0` +
             '```';
 
           return await messsage.update({
@@ -250,9 +251,24 @@ export class BuyService {
             ],
           });
         }
+
+        if (
+          (findUser.amount || 0) < totalAmountValue ||
+          isNaN(findUser.amount)
+        ) {
+          const textCancel = '```💸Số dư của bạn không đủ!```';
+          const msgCancel = {
+            t: textCancel,
+            mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: textCancel.length }],
+          };
+          return await messsage.update(msgCancel);
+        }
+
+        findUser.amount = Number(findUser.amount) - totalAmountValue;
+        await this.userRepository.save(findUser);
         const resultEmbed = {
           color: getRandomColor(),
-          title: `[buy] ${descriptionValue}`,
+          title: `[Sell] ${descriptionValue}`,
           description: `Token: ${totalAmountValue.toLocaleString()}đ`,
         };
 
@@ -262,12 +278,15 @@ export class BuyService {
 
         const dataTransaction = {
           clanId: clanId,
-          buyerId: authId,
-          buyerName: findUser.username,
+          sellerId: authId,
+          sellerName: findUser.username,
           note: descriptionValue,
           amount: totalAmountValue,
+          amountLock: {
+            username: findUser.username,
+            amount: totalAmountValue,
+          },
         };
-
         await this.transactionP2PRepository.insert(dataTransaction);
         return;
       }
@@ -277,39 +296,35 @@ export class BuyService {
           return;
         }
         const rawOrderList = JSON.parse(data.extra_data);
-        const parsedOrders = rawOrderList.MyBuyOrder.map((item) =>
+        const parsedOrders = rawOrderList.MySellOrder.map((item) =>
           JSON.parse(item),
         );
         const transactions = await this.transactionP2PRepository.find({
-          where: {
-            clanId: clanId || '',
-            buyerId: authId,
-            deleted: false,
-            sellerId: IsNull(),
-          },
+          where: { clanId: clanId || '', sellerId: authId, deleted: false },
         });
 
-        for (const buyOrder of parsedOrders) {
-          const tx = transactions.find((t) => t.id === buyOrder.id);
+        for (const sellOrder of parsedOrders) {
+          const tx = transactions.find((t) => t.id === sellOrder.id);
           if (!tx) continue;
-          if (Object.keys(tx?.amountLock || {}).length !== 0) {
+          if (tx.buyerName || tx.buyerId) {
             continue;
           }
+          findUser.amount =
+            Number(findUser.amount) + Number(tx.amountLock.amount);
+          if (isNaN(findUser.amount)) {
+            return;
+          }
+          await this.userRepository.save(findUser);
           await this.transactionP2PRepository.update(
             {
-              id: buyOrder.id,
+              id: sellOrder.id,
             },
             { deleted: true },
           );
         }
 
         const remainingTransactions = await this.transactionP2PRepository.find({
-          where: {
-            clanId: clanId || '',
-            buyerId: authId,
-            deleted: false,
-            sellerId: IsNull(),
-          },
+          where: { clanId: clanId || '', sellerId: authId, deleted: false },
         });
         const embedCompoents = this.generateEmbedComponents(
           remainingTransactions,
@@ -337,57 +352,43 @@ export class BuyService {
         return;
       }
 
-      if (typeButtonRes === EmbebButtonType.SELL) {
+      if (typeButtonRes === EmbebButtonType.BUY) {
         const rawOrderList = JSON.parse(data.extra_data);
-        const parsedOrders = rawOrderList.MyBuyOrder.map((item) =>
+        const parsedOrders = rawOrderList.MySellOrder.map((item) =>
           JSON.parse(item),
         );
-        for (const buyOrder of parsedOrders) {
-          if (data.user_id === buyOrder.buyerId) {
+        for (const sellOrder of parsedOrders) {
+          if (data.user_id === sellOrder.sellerId) {
             return;
           }
-          const buyer = await channel.clan.users.fetch(buyOrder.buyerId);
-          if (isNaN(buyOrder.amount) || Number(buyOrder.amount) <= 0) {
+          const seller = await channel.clan.users.fetch(sellOrder.sellerId);
+          if (isNaN(sellOrder.amount) || Number(sellOrder.amount) <= 0) {
             return;
           }
           const transaction = await this.transactionP2PRepository.findOne({
-            where: { id: buyOrder.id || '', deleted: false },
+            where: { id: sellOrder.id || '', deleted: false },
           });
           if (!transaction) {
             return;
           }
-          if (Object.keys(transaction?.amountLock || {}).length !== 0) {
+          if (transaction.buyerId || transaction.buyerName) {
             continue;
           }
 
-          if (
-            (findUser.amount || 0) < Number(buyOrder.amount) ||
-            isNaN(findUser.amount)
-          ) {
-            const content =
-              '```' +
-              `[transacion] - \n❌Số dư của bạn không đủ hoặc không hợp lệ!` +
-              '```';
-            return await seller.sendDM({
-              t: content,
-              mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: content.length }],
-            });
-          }
-
-          findUser.amount = Number(findUser.amount) - Number(buyOrder.amount);
-          await this.userRepository.save(findUser);
-          transaction.amountLock = {
-            username: findUser.username,
-            amount: buyOrder.amount,
-          };
+          transaction.buyerId = findUser.user_id;
+          transaction.buyerName = findUser.username;
           await this.transactionP2PRepository.save(transaction);
           const transactions = await this.transactionP2PRepository.find({
-            where: { clanId: clanId || '', deleted: false, sellerId: IsNull() },
+            where: {
+              clanId: clanId || '',
+              deleted: false,
+              sellerId: Not(IsNull()),
+            },
           });
 
           const embedCompoents =
-            this.generateEmbedComponentListBuys(transactions);
-          const embed: EmbedProps[] = this.generateEmbedMsgListBuy(
+            this.generateEmbedComponentListSells(transactions);
+          const embed: EmbedProps[] = this.generateEmbedMsgListSell(
             '',
             color,
             embedCompoents,
@@ -399,35 +400,35 @@ export class BuyService {
             is_public: isPublic,
             color: color,
             clan_nick: authorName,
-            type: 'Sell',
+            type: 'Buy',
           });
           await messsage.update({ embed, components });
-          const embedbuy = [
-            {
-              color,
-              title: `[Buy]`,
-              description: `${findUser.username} đã yêu cầu giao dịch mã: BUY${buyOrder.id}, hãy liên hệ với họ`,
-              timestamp: new Date().toISOString(),
-              footer: MEZON_EMBED_FOOTER,
-            },
-          ];
-          await buyer.sendDM({ embed: embedbuy });
-
           const embedSell = [
             {
               color,
               title: `[Sell]`,
-              description: `Bạn đang yêu cầu giao dịch mã: BUY${buyOrder.id} với ${buyer.username}, hãy liên hệ với họ`,
+              description: `Bạn đang yêu cầu giao dịch mã: SELL${sellOrder.id} với ${seller.username}, hãy liên hệ với họ`,
+              timestamp: new Date().toISOString(),
+              footer: MEZON_EMBED_FOOTER,
+            },
+          ];
+          await buyer.sendDM({ embed: embedSell });
+
+          const embedBuy = [
+            {
+              color,
+              title: `[Sell]`,
+              description: `${findUser.username} đã yêu cầu giao dịch mã: SELL${sellOrder.id}, hãy liên hệ với họ`,
               timestamp: new Date().toISOString(),
               footer: MEZON_EMBED_FOOTER,
             },
           ];
 
-          const componentSells = [
+          const componentBuys = [
             {
               components: [
                 {
-                  id: `confirmBuy_CANCEL_${authId}_${clanId}_${mode}_${isPublic}_${color}_${authorName}_${buyOrder.id}_${seller.id}_${buyer.id}`,
+                  id: `confirmSell_CANCEL_${authId}_${clanId}_${mode}_${isPublic}_${color}_${authorName}_${sellOrder.id}_${seller.id}_${buyer.id}`,
                   type: EMessageComponentType.BUTTON,
                   component: {
                     label: `Cancel`,
@@ -435,7 +436,7 @@ export class BuyService {
                   },
                 },
                 {
-                  id: `confirmBuy_DONE_${authId}_${clanId}_${mode}_${isPublic}_${color}_${authorName}_${buyOrder.id}_${seller.id}_${buyer.id}`,
+                  id: `confirmSell_DONE_${authId}_${clanId}_${mode}_${isPublic}_${color}_${authorName}_${sellOrder.id}_${seller.id}_${buyer.id}`,
                   type: EMessageComponentType.BUTTON,
                   component: {
                     label: `Done`,
@@ -443,7 +444,7 @@ export class BuyService {
                   },
                 },
                 {
-                  id: `confirmBuy_REPORT_${authId}_${clanId}_${mode}_${isPublic}_${color}_${authorName}_${buyOrder.id}_${seller.id}_${buyer.id}`,
+                  id: `confirmSell_REPORT_${authId}_${clanId}_${mode}_${isPublic}_${color}_${authorName}_${sellOrder.id}_${seller.id}_${buyer.id}`,
                   type: EMessageComponentType.BUTTON,
                   component: {
                     label: `Report`,
@@ -453,21 +454,21 @@ export class BuyService {
               ],
             },
           ];
-          const messSell = await seller.sendDM({
-            embed: embedSell,
-            components: componentSells,
+          const messBuy = await seller.sendDM({
+            embed: embedBuy,
+            components: componentBuys,
           });
-          if (!messSell) {
+          if (!messBuy) {
             return;
           }
 
           transaction.message = [
             ...(transaction.message || []),
             {
-              id: messSell.message_id,
+              id: messBuy.message_id,
               clan_id: '0',
-              channel_id: messSell.channel_id,
-              content: embedbuy,
+              channel_id: messBuy.channel_id,
+              content: embedSell,
             },
           ];
           await this.transactionP2PRepository.save(transaction);
@@ -477,7 +478,7 @@ export class BuyService {
     } catch (error) {}
   }
 
-  async handleSelectConfirmBuy(data) {
+  async handleSelectConfirmSell(data) {
     try {
       const key = `${data.message_id}-${data.channel_id}`;
 
@@ -508,21 +509,21 @@ export class BuyService {
         if (!transaction) {
           return;
         }
-        const embedbuy = [
+        const embedsell = [
           {
             color,
-            title: `[Buy]`,
-            description: `${findUser.username} đã yêu cầu hủy giao dịch mã: BUY${transacionId}, hãy confirm nếu không có vẫn đề gì và hoặc report để báo cáo admin`,
+            title: `[Sell]`,
+            description: `${findUser.username} đã yêu cầu hủy giao dịch mã: SELL${transacionId}, hãy confirm nếu không có vẫn đề gì và hoặc report để báo cáo admin`,
             timestamp: new Date().toISOString(),
             footer: MEZON_EMBED_FOOTER,
           },
         ];
 
-        const componentBuys = [
+        const componentSells = [
           {
             components: [
               {
-                id: `confirmBuy_CONFIRM_${authId}_${clanId}_${mode}_${isPublic}_${color}_${authorName}_${transacionId}_${seller.id}_${buyer.id}`,
+                id: `confirmSell_CONFIRM_${authId}_${clanId}_${mode}_${isPublic}_${color}_${authorName}_${transacionId}_${seller.id}_${buyer.id}`,
                 type: EMessageComponentType.BUTTON,
                 component: {
                   label: `Confirm`,
@@ -530,7 +531,7 @@ export class BuyService {
                 },
               },
               {
-                id: `confirmBuy_REPORT_${authId}_${clanId}_${mode}_${isPublic}_${color}_${authorName}_${transacionId}_${seller.id}_${buyer.id}`,
+                id: `confirmSell_REPORT_${authId}_${clanId}_${mode}_${isPublic}_${color}_${authorName}_${transacionId}_${seller.id}_${buyer.id}`,
                 type: EMessageComponentType.BUTTON,
                 component: {
                   label: `Report`,
@@ -540,35 +541,35 @@ export class BuyService {
             ],
           },
         ];
-        const messBuy = await buyer.sendDM({
-          embed: embedbuy,
-          components: componentBuys,
+        const messSell = await buyer.sendDM({
+          embed: embedsell,
+          components: componentSells,
         });
-        if (!messBuy) {
+        if (!messSell) {
           return;
         }
 
         transaction.message = [
           ...(transaction.message || []),
           {
-            id: messBuy.message_id,
+            id: messSell.message_id,
             clan_id: '0',
-            channel_id: messBuy.channel_id,
-            content: embedbuy,
+            channel_id: messSell.channel_id,
+            content: embedsell,
           },
         ];
         await this.transactionP2PRepository.save(transaction);
 
-        const embedSell = [
+        const embedBuy = [
           {
             color,
-            title: `[Sell]`,
-            description: `Bạn đã yêu cầu hủy giao dịch mã: BUY${transacionId} với ${buyer.username}, hãy liên hệ với họ để họ xác nhận`,
+            title: `[Buy]`,
+            description: `Bạn đã yêu cầu hủy giao dịch mã: SELL${transacionId} với ${seller.username}, hãy liên hệ với họ để họ xác nhận`,
             timestamp: new Date().toISOString(),
             footer: MEZON_EMBED_FOOTER,
           },
         ];
-        await seller.sendDM({ embed: embedSell });
+        await seller.sendDM({ embed: embedBuy });
       }
 
       if (typeButtonRes === EmbebButtonType.CONFIRM) {
@@ -579,34 +580,26 @@ export class BuyService {
           return;
         }
 
-        const findUser = await this.userRepository.findOne({
-          where: { username: transaction.amountLock.username },
-        });
-        if (!findUser) return;
-
-        findUser.amount =
-          Number(findUser.amount) + Number(transaction.amountLock.amount);
-        await this.userRepository.save(findUser);
-
-        transaction.amountLock = {};
+        transaction.buyerId = '';
+        transaction.buyerName = '';
         await this.transactionP2PRepository.save(transaction);
 
-        const embedbuy = [
+        const embedsell = [
           {
             color,
-            title: `[Buy]`,
-            description: `Bạn đã xác nhận yêu cầu hủy giao dịch mã: BUY${transacionId}`,
+            title: `[Sell]`,
+            description: `Bạn đã xác nhận yêu cầu hủy giao dịch mã: SELL${transacionId}`,
             timestamp: new Date().toISOString(),
             footer: MEZON_EMBED_FOOTER,
           },
         ];
-        await buyer.sendDM({ embed: embedbuy });
+        await buyer.sendDM({ embed: embedsell });
 
         const embedSell = [
           {
             color,
             title: `[Sell]`,
-            description: `${buyer.username} đã xác nhận yêu cầu hủy giao dịch mã: BUY${transacionId}`,
+            description: `${findUser.username} đã xác nhận yêu cầu hủy giao dịch mã: SELL${transacionId}`,
             timestamp: new Date().toISOString(),
             footer: MEZON_EMBED_FOOTER,
           },
@@ -643,7 +636,7 @@ export class BuyService {
           {
             color,
             title: `[Report]`,
-            description: `Giao dịch mã: BUY${transacionId} đã báo cáo đến admin, hãy liên hệ ${bot.invitor[clanId]} để được phản hồi sớm nhất`,
+            description: `Giao dịch mã: SELL${transacionId} đã báo cáo đến admin, hãy liên hệ ${bot.invitor[clanId]} để được phản hồi sớm nhất`,
             timestamp: new Date().toISOString(),
             footer: MEZON_EMBED_FOOTER,
           },
@@ -660,7 +653,7 @@ export class BuyService {
           {
             color,
             title: `[report]`,
-            description: `${usernamereport} đã gửi báo cáo giao dịch mã: BUY${transacionId}`,
+            description: `${usernamereport} đã gửi báo cáo giao dịch mã: SELL${transacionId}`,
             timestamp: new Date().toISOString(),
             footer: MEZON_EMBED_FOOTER,
           },
@@ -709,8 +702,8 @@ export class BuyService {
         const embed = [
           {
             color,
-            title: `[Buy]`,
-            description: `Giao dịch mã: BUY${transacionId} đã được hoàn thành`,
+            title: `[Sell]`,
+            description: `Giao dịch mã: SELL${transacionId} đã được hoàn thành`,
             timestamp: new Date().toISOString(),
             footer: MEZON_EMBED_FOOTER,
           },

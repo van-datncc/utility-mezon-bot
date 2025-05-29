@@ -5,7 +5,8 @@ import { PollService } from '../commands/poll/poll.service';
 import { RoleService } from '../commands/selfAssignableRoles/role.service';
 import { LixiService } from '../lixi/lixi.service';
 import { SicboService } from '../commands/sicbo/sicbo.service';
-import { TransactionP2PService } from '../commands/transactionP2P/buy.service';
+import { BuyService } from '../commands/transactionP2P/buy.service';
+import { SellService } from '../commands/transactionP2P/sell.service';
 
 @Injectable()
 export class ListenerMessageButtonClicked {
@@ -14,7 +15,8 @@ export class ListenerMessageButtonClicked {
     private roleService: RoleService,
     private lixiService: LixiService,
     private sicboService: SicboService,
-    private transactionP2PService: TransactionP2PService,
+    private buyService: BuyService,
+    private sellService: SellService,
   ) {}
 
   @OnEvent(Events.MessageButtonClicked)
@@ -40,6 +42,12 @@ export class ListenerMessageButtonClicked {
           break;
         case 'confirmBuy':
           this.handleSelectConfirmBuy(data);
+          break;
+        case 'sell':
+          this.handleSelectSell(data);
+          break;
+        case 'confirmSell':
+          this.handleSelectConfirmSell(data);
           break;
         default:
           break;
@@ -83,7 +91,7 @@ export class ListenerMessageButtonClicked {
 
   async handleSelectBuy(data) {
     try {
-      await this.transactionP2PService.handleSelectBuy(data);
+      await this.buyService.handleSelectBuy(data);
     } catch (error) {
       console.log('ERORR handleSelectPoll', error);
     }
@@ -91,7 +99,23 @@ export class ListenerMessageButtonClicked {
 
   async handleSelectConfirmBuy(data) {
     try {
-      await this.transactionP2PService.handleSelectConfirmBuy(data);
+      await this.buyService.handleSelectConfirmBuy(data);
+    } catch (error) {
+      console.log('ERORR handleSelectPoll', error);
+    }
+  }
+
+  async handleSelectSell(data) {
+    try {
+      await this.sellService.handleSelectSell(data);
+    } catch (error) {
+      console.log('ERORR handleSelectPoll', error);
+    }
+  }
+
+  async handleSelectConfirmSell(data) {
+    try {
+      await this.sellService.handleSelectConfirmSell(data);
     } catch (error) {
       console.log('ERORR handleSelectPoll', error);
     }

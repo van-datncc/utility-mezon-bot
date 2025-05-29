@@ -1,24 +1,24 @@
 import { ChannelMessage, ChannelMessageAck, EMarkdownType } from 'mezon-sdk';
 import { Command } from 'src/bot/base/commandRegister.decorator';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Not, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { CommandMessage } from 'src/bot/base/command.abstract';
 import { MezonBotMessage } from 'src/bot/models/mezonBotMessage.entity';
 import { getRandomColor } from 'src/bot/utils/helps';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { EmbedProps } from 'src/bot/constants/configs';
 import { TransactionP2P } from 'src/bot/models/transactionP2P.entity';
-import { BuyService } from './buy.service';
+import { SellService } from './sell.service';
 
-@Command('mybuyorder')
-export class MyBuyCommand extends CommandMessage {
+@Command('mysellorder')
+export class MySellCommand extends CommandMessage {
   constructor(
     clientService: MezonClientService,
     @InjectRepository(MezonBotMessage)
     private mezonBotMessageRepository: Repository<MezonBotMessage>,
     @InjectRepository(TransactionP2P)
     private transactionP2PRepository: Repository<TransactionP2P>,
-    private transactionP2PServiceRepository: BuyService,
+    private transactionP2PServiceRepository: SellService,
   ) {
     super(clientService);
   }
@@ -27,7 +27,7 @@ export class MyBuyCommand extends CommandMessage {
     const messageChannel = await this.getChannelMessage(message);
     if (!message.clan_id) {
       const content =
-        '```' + `[mybuyorder] Bạn chỉ có thể mua bán trong clan!` + '```';
+        '```' + `[mysellorder] Bạn chỉ có thể mua bán trong clan!` + '```';
 
       return await messageChannel?.reply({
         t: content,
@@ -42,7 +42,7 @@ export class MyBuyCommand extends CommandMessage {
     }
     if (message.username === 'Anonymous') {
       const content =
-        '```' + `[mybuyorder] Anonymous can't use this command!` + '```';
+        '```' + `[mysellorder] Anonymous can't use this command!` + '```';
 
       return await messageChannel?.reply({
         t: content,
@@ -58,14 +58,13 @@ export class MyBuyCommand extends CommandMessage {
 
     const onlyBuySyntax =
       message?.content?.t && typeof message.content.t === 'string'
-        ? message.content.t.trim() === '*mybuyorder'
+        ? message.content.t.trim() === '*mysellorder'
         : false;
     const transactions = await this.transactionP2PRepository.find({
       where: {
         clanId: message.clan_id || '',
-        buyerId: message.sender_id,
+        sellerId: message.sender_id,
         deleted: false,
-        sellerId: IsNull(),
       },
     });
     const colorEmbed = getRandomColor();
