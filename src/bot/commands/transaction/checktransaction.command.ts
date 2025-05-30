@@ -50,7 +50,7 @@ export class ChecktransactionCommand extends CommandMessage {
       const channel = await this.client.channels.fetch(message.channel_id);
       const user = await channel.clan.users.fetch(message.sender_id);
       const transaction = await user.listTransactionDetail(args[0]);
-      const dateStart = new Date('2025-05-30T03:27:07.499165Z');
+      const dateStart = new Date('2025-05-30T07:27:07.499165Z');
       if (new Date(transaction.create_time) < dateStart) {
         const content =
           '```' +
