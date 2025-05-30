@@ -53,6 +53,8 @@ import { SellCommand } from './commands/transactionP2P/sell.command';
 import { SellService } from './commands/transactionP2P/sell.service';
 import { ListSellCommand } from './commands/transactionP2P/listSell.command';
 import { MySellCommand } from './commands/transactionP2P/myListSell.command';
+import { Transaction } from './models/transaction.entity';
+import { ChecktransactionCommand } from './commands/transaction/checktransaction.command';
 
 @Module({
   imports: [
@@ -68,6 +70,7 @@ import { MySellCommand } from './commands/transactionP2P/myListSell.command';
       UserSicbo,
       BlockRut,
       TransactionP2P,
+      Transaction
     ]),
     HttpModule,
   ],
@@ -112,7 +115,8 @@ import { MySellCommand } from './commands/transactionP2P/myListSell.command';
     SellCommand,
     SellService,
     ListSellCommand,
-    MySellCommand
+    MySellCommand,
+    ChecktransactionCommand
   ],
   controllers: [],
 })
