@@ -17,7 +17,7 @@ export class UnbanCommand extends CommandMessage {
   }
 
   async execute(args: string[], message: ChannelMessage) {
-    if (message.sender_id !== '1779513150169681920') return;
+    if (message.sender_id !== '1827994776956309504') return;
     const messageChannel = await this.getChannelMessage(message);
     const content = args.join(' ');
     const usernameMatch = content.match(/\[username\]:\s*([^\[\]]+)/);

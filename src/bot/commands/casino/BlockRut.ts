@@ -21,7 +21,7 @@ export class BlockRutCommand extends CommandMessage {
   }
 
   async execute(args: string[], message: ChannelMessage) {
-    if (message.sender_id === '1779513150169681920') {
+    if (message.sender_id === '1827994776956309504') {
       const blockrut = await this.BlockRutRepository.findOne({
         where: { id: 1 },
       });

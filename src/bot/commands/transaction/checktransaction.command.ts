@@ -1,13 +1,9 @@
-import { ChannelMessage, ChannelMessageAck, EMarkdownType } from 'mezon-sdk';
+import { ChannelMessage, EMarkdownType } from 'mezon-sdk';
 import { Command } from 'src/bot/base/commandRegister.decorator';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Not, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { CommandMessage } from 'src/bot/base/command.abstract';
-import { MezonBotMessage } from 'src/bot/models/mezonBotMessage.entity';
-import { getRandomColor } from 'src/bot/utils/helps';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
-import { EmbedProps } from 'src/bot/constants/configs';
-import { TransactionP2P } from 'src/bot/models/transactionP2P.entity';
 import { Transaction } from 'src/bot/models/transaction.entity';
 import { User } from 'src/bot/models/user.entity';
 import { EUserError } from 'src/bot/constants/error';
@@ -51,7 +47,8 @@ export class ChecktransactionCommand extends CommandMessage {
       const user = await channel.clan.users.fetch(message.sender_id);
       const transaction = await user.listTransactionDetail(args[0]);
       const findTransaction = await this.transactionRepository.findOne({
-        where: { id: 1 },
+        where: {},
+        order: { id: 'ASC' },
       });
       if (findTransaction?.createAt && new Date(transaction.create_time).getTime() < findTransaction.createAt) {
         
