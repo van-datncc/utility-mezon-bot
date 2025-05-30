@@ -12,12 +12,10 @@ import { Transaction } from 'src/bot/models/transaction.entity';
 import { User } from 'src/bot/models/user.entity';
 import { EUserError } from 'src/bot/constants/error';
 
-@Command('checktransaction')
+@Command('chk')
 export class ChecktransactionCommand extends CommandMessage {
   constructor(
     clientService: MezonClientService,
-    @InjectRepository(MezonBotMessage)
-    private mezonBotMessageRepository: Repository<MezonBotMessage>,
     @InjectRepository(Transaction)
     private transactionRepository: Repository<Transaction>,
     @InjectRepository(User)
