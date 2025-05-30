@@ -151,10 +151,10 @@ export class SlotsCommand extends CommandMessage {
     botInfo.amount = Number(botInfo.amount) + Number(money - betMoney);
 
     if (isJackPot) {
-      if (botInfo.amount > 100000) {
-        botInfo.jackPot = 100000;
+      if (botInfo.amount > 500000) {
+        botInfo.jackPot = 500000;
         botInfo.amount =
-          Number(botInfo.amount) + Number(money - betMoney) - 100000;
+          Number(botInfo.amount) + Number(money - betMoney) - 500000;
       } else {
         botInfo.jackPot = botInfo.amount;
         botInfo.amount = Number(botInfo.amount) - Number(botInfo.jackPot);
