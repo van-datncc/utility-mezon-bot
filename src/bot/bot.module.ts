@@ -44,11 +44,15 @@ import { SicboHistoryCommand } from './commands/sicbo/historySicbo.command';
 import { BanCommand } from './commands/ban/ban';
 import { PollSchedulerService } from './commands/poll/poll-scheduler.service';
 import { TransactionP2P } from './models/transactionP2P.entity';
-import { TransactionP2PService } from './commands/transactionP2P/buy.service';
+import { BuyService } from './commands/transactionP2P/buy.service';
 import { BuyCommand } from './commands/transactionP2P/buy.command';
 import { MyBuyCommand } from './commands/transactionP2P/myListBuy.command';
 import { ListBuyCommand } from './commands/transactionP2P/listBuy.command';
 import { UnbanCommand } from './commands/ban/unban';
+import { SellCommand } from './commands/transactionP2P/sell.command';
+import { SellService } from './commands/transactionP2P/sell.service';
+import { ListSellCommand } from './commands/transactionP2P/listSell.command';
+import { MySellCommand } from './commands/transactionP2P/myListSell.command';
 
 @Module({
   imports: [
@@ -100,11 +104,15 @@ import { UnbanCommand } from './commands/ban/unban';
     SicboHistoryCommand,
     BanCommand,
     PollSchedulerService,
-    TransactionP2PService,
+    BuyService,
     BuyCommand,
     MyBuyCommand,
     ListBuyCommand,
-    UnbanCommand
+    UnbanCommand,
+    SellCommand,
+    SellService,
+    ListSellCommand,
+    MySellCommand
   ],
   controllers: [],
 })
