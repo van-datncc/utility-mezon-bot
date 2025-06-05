@@ -229,10 +229,10 @@ export class PollService {
       await findChannel.send({
         embed,
       });
-      const textConfirm = '```This poll has finished!```';
+      const textConfirm = 'This poll has finished!';
       const msgFinish = {
         t: textConfirm,
-        mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: textConfirm.length }],
+        mk: [{ type: EMarkdownType.PRE, s: 0, e: textConfirm.length }],
       };
       const channel = await this.client.channels.fetch(
         findMessagePoll.channelId,
@@ -249,7 +249,6 @@ export class PollService {
   }
 
   async handleSelectPoll(data) {
-    console.log('data', data, this.blockEditedList);
     try {
       if (
         this.blockEditedList.includes(`${data.message_id}-${data.channel_id}`)
@@ -278,7 +277,6 @@ export class PollService {
           deleted: false,
         },
       });
-      console.log('findMessagePoll', findMessagePoll);
       if (!findMessagePoll) return;
       let userVoteMessageId =
         findMessagePoll.pollResult?.map((item) => JSON.parse(item)) || [];
@@ -289,19 +287,17 @@ export class PollService {
 
       if (typeButtonRes === EmbebButtonType.CANCEL) {
         if (data.user_id !== authId) {
-          const content =
-            '```' +
-            `[Poll] - ${title}\n❌You have no permission to cancel this poll!` +
-            '```';
+          const content = `[Poll] - ${title}\n❌You have no permission to cancel this poll!`;
+
           return await user.sendDM({
             t: content,
-            mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: content.length }],
+            mk: [{ type: EMarkdownType.PRE, s: 0, e: content.length }],
           });
         }
-        const textCancel = '```Cancel poll successful!```';
+        const textCancel = ' Cancel poll successful!';
         const msgCancel = {
           t: textCancel,
-          mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: textCancel.length }],
+          mk: [{ type: EMarkdownType.PRE, s: 0, e: textCancel.length }],
         };
         await this.mezonBotMessageRepository.update(
           {
@@ -392,13 +388,10 @@ export class PollService {
 
       if (typeButtonRes === EmbebButtonType.FINISH) {
         if (data.user_id !== authId) {
-          const content =
-            '```' +
-            `[Poll] - ${title}\n❌You have no permission to finish this poll!` +
-            '```';
+          const content = `[Poll] - ${title}\n❌You have no permission to finish this poll!`;
           return await user.sendDM({
             t: content,
-            mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: content.length }],
+            mk: [{ type: EMarkdownType.PRE, s: 0, e: content.length }],
           });
         }
         this.blockEditedList.push(`${data.message_id}-${data.channel_id}`);

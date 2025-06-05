@@ -69,7 +69,7 @@ export class QRCodeCommand extends CommandMessage {
         t: EUserError.INVALID_USER,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: EUserError.INVALID_USER.length,
           },

@@ -200,10 +200,10 @@ export class SellService {
           return;
         }
 
-        const textCancel = '```Cancel buy successful!```';
+        const textCancel = 'Cancel buy successful!';
         const msgCancel = {
           t: textCancel,
-          mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: textCancel.length }],
+          mk: [{ type: EMarkdownType.PRE, s: 0, e: textCancel.length }],
         };
         await this.mezonBotMessageRepository.update(
           {
@@ -234,17 +234,14 @@ export class SellService {
           !Number.isInteger(totalAmountValue) ||
           totalAmountValue <= 0
         ) {
-          const content =
-            '```' +
-            `[Sell]
-        - [totalAmount]: Tổng số tiền sell phải là số tự nhiên lớn hơn 0` +
-            '```';
+          const content = `[Sell]
+        - [totalAmount]: Tổng số tiền sell phải là số tự nhiên lớn hơn 0`;
 
           return await messsage.update({
             t: content,
             mk: [
               {
-                type: EMarkdownType.TRIPLE,
+                type: EMarkdownType.PRE,
                 s: 0,
                 e: content.length + 6,
               },
@@ -256,10 +253,10 @@ export class SellService {
           (findUser.amount || 0) < totalAmountValue ||
           isNaN(findUser.amount)
         ) {
-          const textCancel = '```💸Số dư của bạn không đủ!```';
+          const textCancel = '💸Số dư của bạn không đủ!';
           const msgCancel = {
             t: textCancel,
-            mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: textCancel.length }],
+            mk: [{ type: EMarkdownType.PRE, s: 0, e: textCancel.length }],
           };
           return await messsage.update(msgCancel);
         }

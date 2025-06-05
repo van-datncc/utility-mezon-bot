@@ -28,7 +28,7 @@ export class AccBalanceCommand extends CommandMessage {
         t: EUserError.INVALID_USER,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: EUserError.INVALID_USER.length,
           },
@@ -41,7 +41,7 @@ export class AccBalanceCommand extends CommandMessage {
       t: successMessage,
       mk: [
         {
-          type: EMarkdownType.TRIPLE,
+          type: EMarkdownType.PRE,
           s: 0,
           e: successMessage.length,
         },

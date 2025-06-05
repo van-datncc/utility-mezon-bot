@@ -41,7 +41,7 @@ export class SellCommand extends CommandMessage {
         t: EUserError.INVALID_USER,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: EUserError.INVALID_USER.length,
           },
@@ -65,43 +65,41 @@ export class SellCommand extends CommandMessage {
       const content = activeBan.note;
       const msgText = `❌ Bạn đang bị cấm thực hiện hành động "sell" đến ${formattedTime}\n   - Lý do: ${content}\n NOTE: Hãy liên hệ admin để mua vé unban`;
       return await messageChannel?.reply({
-        t: '```' + msgText + '```',
+        t: msgText,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
-            e: ('```' + msgText + '```').length,
+            e: msgText.length,
           },
         ],
       });
     }
 
     if (!message.clan_id) {
-      const content =
-        '```' + `[Sell] Bạn chỉ có thể mua bán trong clan!` + '```';
+      const content = `[Sell] Bạn chỉ có thể mua bán trong clan!`;
 
       return await messageChannel?.reply({
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
-            e: content.length + 6,
+            e: content.length,
           },
         ],
       });
     }
     if (message.username === 'Anonymous') {
-      const content =
-        '```' + `[Sell] Anonymous can't use this command!` + '```';
+      const content = `[Sell] Anonymous can't use this command!`;
 
       return await messageChannel?.reply({
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
-            e: content.length + 6,
+            e: content.length,
           },
         ],
       });

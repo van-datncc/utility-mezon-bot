@@ -22,29 +22,25 @@ export class BanCommand extends CommandMessage {
     const messageChannel = await this.getChannelMessage(message);
     const content = args.join(' ');
     const usernameMatch = content.match(/\[username\]:\s*([^\[\]]+)/);
-    console.log('usernameMatch: ', usernameMatch);
     const typeMatch = content.match(/\[type\]:\s*(\w+)/);
     const timeMatch = content.match(/\[time\]:\s*(\d+)([smhd])/);
     const noteMatch = content.match(/\[note\]:\s*(.+)/);
 
     if (!typeMatch || !timeMatch || !usernameMatch) {
-      const content =
-        '```' +
-        `[Ban]
+      const content = `[Ban]
         - [username]: tên người bị ban
         - [type]: ban chức năng (rut, slots, lixi, sicbo, transaction, all)
         - [time]: thời gian ban (đơn vị: s, m, h, d)
         - [note]: lý do ban
-        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: rut [time]: 5m [note]: phá hoại` +
-        '```';
+        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: rut [time]: 5m [note]: phá hoại`;
 
       return await messageChannel?.reply({
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
-            e: content.length + 6,
+            e: content.length,
           },
         ],
       });
@@ -73,23 +69,20 @@ export class BanCommand extends CommandMessage {
         duration = timeValue * 86400;
         break;
       default:
-        const content =
-          '```' +
-          `[Ban]
+        const content = `[Ban]
         - [username]: tên người bị ban
         - [type]: ban chức năng (rut, slots, lixi, sicbo, transaction, all)
         - [time]: thời gian ban (đơn vị: s, m, h, d)
         - [note]: lý do ban
-        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: rut [time]: 5m [note]: phá hoại` +
-          '```';
+        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: rut [time]: 5m [note]: phá hoại`;
 
         return await messageChannel?.reply({
           t: content,
           mk: [
             {
-              type: EMarkdownType.TRIPLE,
+              type: EMarkdownType.PRE,
               s: 0,
-              e: content.length + 6,
+              e: content.length,
             },
           ],
         });
@@ -115,23 +108,19 @@ export class BanCommand extends CommandMessage {
         funcType = FuncType.ALL;
         break;
       default:
-        const content =
-          '```' +
-          `[Ban]
+        const content = `[Ban]
         - [username]: tên người bị ban
         - [type]: ban chức năng (rut, slots, lixi, sicbo, transaction, all)
         - [time]: thời gian ban (đơn vị: s, m, h, d)
         - [note]: lý do ban
-        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: rut [time]: 5m [note]: phá hoại` +
-          '```';
-
+        Ex: *ban [username]: a.nguyenvan, b.phamquoc [type]: rut [time]: 5m [note]: phá hoại`;
         return await messageChannel?.reply({
           t: content,
           mk: [
             {
-              type: EMarkdownType.TRIPLE,
+              type: EMarkdownType.PRE,
               s: 0,
-              e: content.length + 6,
+              e: content.length,
             },
           ],
         });
@@ -169,15 +158,14 @@ export class BanCommand extends CommandMessage {
     }
     let contentMsg = '';
     if (userban.length > 0) {
-      contentMsg =
-        '```' + `${userban.join(', ')} đã bị ban ${funcType}` + '```';
+      contentMsg = `${userban.join(', ')} đã bị ban ${funcType}`;
       return await messageChannel?.reply({
         t: contentMsg,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
-            e: contentMsg.length + 6,
+            e: contentMsg.length,
           },
         ],
       });

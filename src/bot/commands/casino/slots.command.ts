@@ -57,7 +57,7 @@ export class SlotsCommand extends CommandMessage {
         t: EUserError.INVALID_USER,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: EUserError.INVALID_USER.length,
           },
@@ -79,15 +79,15 @@ export class SlotsCommand extends CommandMessage {
         timeZone: 'Asia/Ho_Chi_Minh',
         hour12: false,
       });
-      const content = activeBan.note
+      const content = activeBan.note;
       const msgText = `❌ Bạn đang bị cấm thực hiện hành động "slots" đến ${formattedTime}\n   - Lý do: ${content}\n NOTE: Hãy liên hệ admin để mua vé unban`;
       return await messageChannel?.reply({
-        t: '```' + msgText + '```',
+        t: msgText,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
-            e: ('```' + msgText + '```').length,
+            e: msgText.length,
           },
         ],
       });
@@ -98,7 +98,7 @@ export class SlotsCommand extends CommandMessage {
         t: EUserError.INVALID_AMOUNT,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: EUserError.INVALID_AMOUNT.length,
           },

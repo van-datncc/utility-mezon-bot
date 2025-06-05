@@ -27,19 +27,19 @@ export class WhiteListAddCommand extends CommandMessage {
         t: EUserError.INVALID_USER,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: EUserError.INVALID_USER.length,
           },
         ],
       });
     if (bot?.invitor[message.clan_id || ''] !== message.username) {
-      const content = '```' + `[Role] - You have no permission!` + '```';
+      const content = `[Role] - You have no permission!`;
       return await messageChannel?.reply({
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: content.length,
           },
@@ -62,16 +62,18 @@ export class WhiteListAddCommand extends CommandMessage {
       usernames = [firstUser, ...usersRaw].filter(Boolean);
       console.log('users: ', usernames);
     }
-    if (usernames.length === 0 || !action || (action !== 'add' && action !== 'remove')) {
-      const content =
-        '```' +
-        `Cú pháp không hợp lệ. Vui lòng dùng: [add] user1 + user2` +
-        '```';
+    if (
+      usernames.length === 0 ||
+      !action ||
+      (action !== 'add' && action !== 'remove')
+    ) {
+      const content = `Cú pháp không hợp lệ. Vui lòng dùng: [add] user1 + user2`;
+
       return await messageChannel?.reply({
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: content.length,
           },
@@ -80,7 +82,6 @@ export class WhiteListAddCommand extends CommandMessage {
     }
 
     if (action !== 'add' && action === 'remove') {
-
     }
 
     if (action === 'add') {
@@ -94,13 +95,12 @@ export class WhiteListAddCommand extends CommandMessage {
       currentWhitelist[message.clan_id || ''] = Array.from(clanWhitelist);
       bot.whitelist = currentWhitelist;
       await this.userRepository.save(bot);
-      const content =
-        '```✅ Đã thêm vào whitelist:\n' + usernames.join(', ') + '```';
+      const content = '✅ Đã thêm vào whitelist:\n' + usernames.join(', ');
       return await messageChannel?.reply({
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: content.length,
           },
@@ -119,13 +119,12 @@ export class WhiteListAddCommand extends CommandMessage {
       currentWhitelist[message.clan_id || ''] = Array.from(clanWhitelist);
 
       await this.userRepository.save(bot);
-      const content =
-        '```✅ Đã xóa khỏi whitelist:\n' + usernames.join(', ') + '```';
+      const content = '✅ Đã xóa khỏi whitelist:\n' + usernames.join(', ');
       return await messageChannel?.reply({
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: content.length,
           },

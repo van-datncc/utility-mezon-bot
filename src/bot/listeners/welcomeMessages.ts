@@ -33,10 +33,10 @@ export class WelcomeMessageHandler {
     const describe = welcomeMessage.content
       .replace('[username]', username)
       .replace('[clanname]', clanname);
-    const content = '```' + `${describe}` + '```';
+    const content = `${describe}`;
     return await user.sendDM({
       t: content,
-      mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: content.length }],
+      mk: [{ type: EMarkdownType.PRE, s: 0, e: content.length }],
     });
   }
 }

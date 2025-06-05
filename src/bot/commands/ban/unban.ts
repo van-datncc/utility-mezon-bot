@@ -24,21 +24,18 @@ export class UnbanCommand extends CommandMessage {
     const typeMatch = content.match(/\[type\]:\s*(\w+)/);
 
     if (!typeMatch || !usernameMatch) {
-      const content =
-        '```' +
-        `[Unban]
+      const content = `[Unban]
         - [username]: tên người bị ban
         - [type]: ban chức năng (rut, slots, lixi, sicbo, transaction, all)
-        Ex: *unban [username]: a.nguyenvan, b.phamquoc [type]: rut` +
-        '```';
+        Ex: *unban [username]: a.nguyenvan, b.phamquoc [type]: rut`;
 
       return await messageChannel?.reply({
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
-            e: content.length + 6,
+            e: content.length,
           },
         ],
       });
@@ -70,21 +67,18 @@ export class UnbanCommand extends CommandMessage {
         funcType = FuncType.ALL;
         break;
       default:
-        const content =
-          '```' +
-          `[unban]
+        const content = `[unban]
         - [username]: tên người bị ban
         - [type]: ban chức năng (rut, slots, lixi, sicbo, transaction, all)
-        Ex: *unban [username]: a.nguyenvan, b.phamquoc [type]: rut` +
-          '```';
+        Ex: *unban [username]: a.nguyenvan, b.phamquoc [type]: rut`;
 
         return await messageChannel?.reply({
           t: content,
           mk: [
             {
-              type: EMarkdownType.TRIPLE,
+              type: EMarkdownType.PRE,
               s: 0,
-              e: content.length + 6,
+              e: content.length,
             },
           ],
         });
@@ -118,19 +112,17 @@ export class UnbanCommand extends CommandMessage {
       await this.userRepository.save(findUser);
       unbanned.push(username);
     }
-    
-    console.log('unbanned: ', unbanned);
+
     let contentMsg = '';
     if (unbanned.length > 0) {
-      contentMsg =
-        '```' + `${unbanned.join(', ')} đã được unban ${funcType}` + '```';
+      contentMsg = `${unbanned.join(', ')} đã được unban ${funcType}`;
       return await messageChannel?.reply({
         t: contentMsg,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
-            e: contentMsg.length + 6,
+            e: contentMsg.length,
           },
         ],
       });
