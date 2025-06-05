@@ -26,14 +26,13 @@ export class ListBuyCommand extends CommandMessage {
   async execute(args: string[], message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
     if (!message.clan_id) {
-      const content =
-        '```' + `[mybuyorder] Bạn chỉ có thể mua bán trong clan!` + '```';
+      const content = `[mybuyorder] Bạn chỉ có thể mua bán trong clan!`;
 
       return await messageChannel?.reply({
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: content.length + 6,
           },
@@ -41,14 +40,13 @@ export class ListBuyCommand extends CommandMessage {
       });
     }
     if (message.username === 'Anonymous') {
-      const content =
-        '```' + `[mybuyorder] Anonymous can't use this command!` + '```';
+      const content = `[mybuyorder] Anonymous can't use this command!`;
 
       return await messageChannel?.reply({
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: content.length + 6,
           },
@@ -91,7 +89,7 @@ export class ListBuyCommand extends CommandMessage {
       });
 
     if (onlyBuySyntax) {
-      let messBuy: ChannelMessageAck | undefined
+      let messBuy: ChannelMessageAck | undefined;
       if (transactions.length > 0) {
         messBuy = await messageChannel?.reply({
           embed,

@@ -23,10 +23,10 @@ export class WelcomeMsgInfoCommand extends CommandMessage {
     });
     if (!welcomeMessage) {
       return await messageChannel?.reply({
-        t: '```' + `welcomeMessage not updated yet` + '```',
+        t: `welcomeMessage not updated yet`,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: `welcomeMessage not updated yet`.length + 6,
           },
@@ -34,10 +34,10 @@ export class WelcomeMsgInfoCommand extends CommandMessage {
       });
     }
     return await messageChannel?.reply({
-      t: '```' + welcomeMessage.content + '```',
+      t: welcomeMessage.content,
       mk: [
         {
-          type: EMarkdownType.TRIPLE,
+          type: EMarkdownType.PRE,
           s: 0,
           e: welcomeMessage.content.length + 6,
         },
