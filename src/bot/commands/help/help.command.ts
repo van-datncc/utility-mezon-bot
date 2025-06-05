@@ -32,7 +32,6 @@ export class HelpCommand extends CommandMessage {
       (item) => !hidenCommandList.includes(item),
     );
     const messageContent =
-      '```' +
       'KOMU - Help Menu' +
       '\n' +
       '• KOMU (' +
@@ -44,11 +43,10 @@ export class HelpCommand extends CommandMessage {
       allCommandsCustom.length +
       ')' +
       '\n' +
-      allCommandsCustom.join(', ') +
-      '```';
+      allCommandsCustom.join(', ');
     const messageSent = await messageChannel?.reply({
       t: messageContent,
-      mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: messageContent.length }],
+      mk: [{ type: EMarkdownType.PRE, s: 0, e: messageContent.length }],
     });
     return messageSent;
   }

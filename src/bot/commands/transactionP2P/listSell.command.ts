@@ -26,14 +26,13 @@ export class ListSellCommand extends CommandMessage {
   async execute(args: string[], message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
     if (!message.clan_id) {
-      const content =
-        '```' + `[Listsell] Bạn chỉ có thể mua bán trong clan!` + '```';
+      const content = `[Listsell] Bạn chỉ có thể mua bán trong clan!`;
 
       return await messageChannel?.reply({
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: content.length + 6,
           },
@@ -41,14 +40,13 @@ export class ListSellCommand extends CommandMessage {
       });
     }
     if (message.username === 'Anonymous') {
-      const content =
-        '```' + `[Listsell] Anonymous can't use this command!` + '```';
+      const content = `[Listsell] Anonymous can't use this command!`;
 
       return await messageChannel?.reply({
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: content.length + 6,
           },

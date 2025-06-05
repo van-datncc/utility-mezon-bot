@@ -25,14 +25,13 @@ export class ChecktransactionCommand extends CommandMessage {
     const messageChannel = await this.getChannelMessage(message);
 
     if (message.username === 'Anonymous') {
-      const content =
-        '```' + `[mybuyorder] Anonymous can't use this command!` + '```';
+      const content = `[mybuyorder] Anonymous can't use this command!`;
 
       return await messageChannel?.reply({
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: content.length + 6,
           },
@@ -50,18 +49,17 @@ export class ChecktransactionCommand extends CommandMessage {
         where: {},
         order: { id: 'ASC' },
       });
-      if (findTransaction?.createAt && new Date(transaction.create_time).getTime() < findTransaction.createAt) {
-        
-        const content =
-          '```' +
-          `[Transaction] transaction này đã tồn tại
-        ` +
-          '```';
+      if (
+        findTransaction?.createAt &&
+        new Date(transaction.create_time).getTime() < findTransaction.createAt
+      ) {
+        const content = `[Transaction] transaction này đã tồn tại
+        `;
         return await messageChannel?.reply({
           t: content,
           mk: [
             {
-              type: EMarkdownType.TRIPLE,
+              type: EMarkdownType.PRE,
               s: 0,
               e: content.length + 6,
             },
@@ -91,7 +89,7 @@ export class ChecktransactionCommand extends CommandMessage {
             t: EUserError.INVALID_USER,
             mk: [
               {
-                type: EMarkdownType.TRIPLE,
+                type: EMarkdownType.PRE,
                 s: 0,
                 e: EUserError.INVALID_USER.length,
               },
@@ -101,16 +99,13 @@ export class ChecktransactionCommand extends CommandMessage {
         findUser.amount = Number(findUser.amount) + Number(transaction.amount);
         await this.userRepository.save(findUser);
 
-        const content =
-          '```' +
-          `[Transaction] Đã cập nhật lại token
-        ` +
-          '```';
+        const content = `[Transaction] Đã cập nhật lại token
+        `;
         return await messageChannel?.reply({
           t: content,
           mk: [
             {
-              type: EMarkdownType.TRIPLE,
+              type: EMarkdownType.PRE,
               s: 0,
               e: content.length + 6,
             },
@@ -118,16 +113,13 @@ export class ChecktransactionCommand extends CommandMessage {
         });
       }
 
-      const content =
-        '```' +
-        `[Transaction] transaction không hợp lệ
-        ` +
-        '```';
+      const content = `[Transaction] transaction không hợp lệ
+        `;
       return await messageChannel?.reply({
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: content.length + 6,
           },
@@ -135,16 +127,13 @@ export class ChecktransactionCommand extends CommandMessage {
       });
     }
 
-    const content =
-      '```' +
-      `[Transaction] transaction này đã tồn tại
-        ` +
-      '```';
+    const content = `[Transaction] transaction này đã tồn tại
+        `;
     return await messageChannel?.reply({
       t: content,
       mk: [
         {
-          type: EMarkdownType.TRIPLE,
+          type: EMarkdownType.PRE,
           s: 0,
           e: content.length + 6,
         },

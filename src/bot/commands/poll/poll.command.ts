@@ -47,10 +47,10 @@ export class PollCommand extends CommandMessage {
           'Exceed the number of choices, maximum number of choices is 10';
       }
       return await messageChannel?.reply({
-        t: '```' + messageContent + '```',
+        t: messageContent,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: messageContent.length + 6,
           },
@@ -74,7 +74,7 @@ export class PollCommand extends CommandMessage {
       embed,
       components,
     });
-    console.log('pollMessageSent', pollMessageSent)
+    console.log('pollMessageSent', pollMessageSent);
     if (!pollMessageSent) return;
     const dataMezonBotMessage = {
       messageId: pollMessageSent.message_id,

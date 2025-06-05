@@ -124,10 +124,10 @@ export class LixiService {
           return;
         }
         this.lixiCanceled.set(key, true);
-        const textCancel = '```Cancel lixi successful!```';
+        const textCancel = 'Cancel lixi successful!';
         const msgCancel = {
           t: textCancel,
-          mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: textCancel.length }],
+          mk: [{ type: EMarkdownType.PRE, s: 0, e: textCancel.length }],
         };
         await this.mezonBotMessageRepository.update(
           {
@@ -321,23 +321,20 @@ export class LixiService {
           minLixiValue < 0 ||
           totalAmountValue < 0
         ) {
-          const content =
-            '```' +
-            `[Lixi]
+          const content = `[Lixi]
         - [totalAmount]: Tổng số tiền lixi
         - [minLixi]: giá trị nhỏ nhất của lixi
         - [numLixi]: số lượng lixi
         Note: 
           [totalAmount] và [minLixi] phải bội số của 10000
           [numLixi] phải là số nguyên dương
-          Lixi sẽ chia đều khi [totalAmount] = [minLixi] * [numLixi]` +
-            '```';
+          Lixi sẽ chia đều khi [totalAmount] = [minLixi] * [numLixi]`;
 
           return await messsage.update({
             t: content,
             mk: [
               {
-                type: EMarkdownType.TRIPLE,
+                type: EMarkdownType.PRE,
                 s: 0,
                 e: content.length + 6,
               },
@@ -346,16 +343,13 @@ export class LixiService {
         }
         let balance = totalAmountValue - numLixiValue * minLixiValue;
         if (balance < 0) {
-          const content =
-            '```' +
-            `[Lixi]
-        [totalAmount] < [minLixi] * [numLixi]` +
-            '```';
+          const content = `[Lixi]
+        [totalAmount] < [minLixi] * [numLixi]`;
           return await messsage.update({
             t: content,
             mk: [
               {
-                type: EMarkdownType.TRIPLE,
+                type: EMarkdownType.PRE,
                 s: 0,
                 e: content.length + 6,
               },
@@ -405,7 +399,7 @@ export class LixiService {
             t: EUserError.INVALID_USER,
             mk: [
               {
-                type: EMarkdownType.TRIPLE,
+                type: EMarkdownType.PRE,
                 s: 0,
                 e: EUserError.INVALID_USER.length,
               },
@@ -420,7 +414,7 @@ export class LixiService {
             t: EUserError.INVALID_AMOUNT,
             mk: [
               {
-                type: EMarkdownType.TRIPLE,
+                type: EMarkdownType.PRE,
                 s: 0,
                 e: EUserError.INVALID_AMOUNT.length,
               },

@@ -146,19 +146,18 @@ export class RoleService {
       if (typeButtonRes === EmbebButtonType.CANCEL) {
         if (data.user_id !== authId) {
           // const content =
-          //   '```' +
-          //   `[Role] - ${title}\n❌You have no permission to cancel this role!` +
-          //   '```';
+          //
+          //   `[Role] - ${title}\n❌You have no permission to cancel this role!`
           // return await user.sendDM({
           //   t: content,
-          //   mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: content.length }],
+          //   mk: [{ type: EMarkdownType.PRE, s: 0, e: content.length }],
           // });
           return;
         }
-        const textCancel = '```Cancel role successful!```';
+        const textCancel = 'Cancel role successful!';
         const msgCancel = {
           t: textCancel,
-          mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: textCancel.length }],
+          mk: [{ type: EMarkdownType.PRE, s: 0, e: textCancel.length }],
         };
         await this.mezonBotMessageRepository.update(
           {
@@ -197,7 +196,6 @@ export class RoleService {
       }
 
       if (typeButtonRes === EmbebButtonType.CONFIRM) {
-
         const bot = await this.userRepository.findOne({
           where: { user_id: process.env.UTILITY_BOT_ID || '' },
         });
