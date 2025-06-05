@@ -14,18 +14,22 @@ import { MezonBotMessage } from 'src/bot/models/mezonBotMessage.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { getRandomColor } from 'src/bot/utils/helps';
 import { EUserError } from '../constants/error';
+import { In } from 'typeorm';
+
+interface LixiDetail {
+  user_id: string;
+  username: string;
+  amount: number;
+}
 
 @Injectable()
 export class LixiService {
   private client: MezonClient;
   private listUserClickLixi: Map<string, Set<string>> = new Map();
-  private listUserReceive: any[] = [];
   private lixiClickBuckets: Map<string, Map<number, { users: any[] }>> =
     new Map();
   private lixiTimeouts: Map<string, Map<number, NodeJS.Timeout>> = new Map();
   private lixiCanceled: Map<string, boolean> = new Map();
-  private lixiProcessingQueue: Map<string, boolean> = new Map();
-  private lixiDistributionTimeouts: Map<string, NodeJS.Timeout> = new Map();
 
   constructor(
     @InjectRepository(MezonBotMessage)
@@ -34,7 +38,6 @@ export class LixiService {
     private clientService: MezonClientService,
   ) {
     this.client = this.clientService.getClient();
-    this.listUserReceive = [];
   }
 
   generateButtonComponents(data, lixis?) {
@@ -61,64 +64,6 @@ export class LixiService {
       },
     ];
   }
-  private getRandomUsers(users: any[], count: number): any[] {
-    const shuffled = [...users].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, count);
-  }
-
-  async handleCancelLixi(data, findMessageLixi, authId, lixiMoney) {
-    if (data.user_id !== authId) {
-      return;
-    }
-    const key = `${data.message_id}-${data.channel_id}`;
-
-    this.lixiCanceled.set(key, true);
-
-    const channel = await this.client.channels.fetch(data.channel_id);
-    const messsage = await channel.messages.fetch(data.message_id);
-    const textCancel = 'Cancel lixi successful!';
-    const msgCancel = {
-      t: textCancel,
-      mk: [{ type: EMarkdownType.PRE, s: 0, e: textCancel.length }],
-    };
-
-    await messsage.update(msgCancel);
-
-    await this.mezonBotMessageRepository.update(
-      {
-        id: findMessageLixi.id,
-      },
-      { deleted: true },
-    );
-
-    const findUser = await this.userRepository.findOne({
-      where: { user_id: authId },
-    });
-    if (!findUser) return;
-    findUser.amount = Number(findUser.amount) + Number(lixiMoney);
-    if (isNaN(findUser.amount)) {
-      return;
-    }
-    await this.userRepository.save(findUser);
-
-    // Clean up any buckets and timeouts for this lixi
-    this.lixiClickBuckets.delete(key);
-    const timeoutMap = this.lixiTimeouts.get(key);
-    if (timeoutMap) {
-      for (const timeout of timeoutMap.values()) {
-        clearTimeout(timeout);
-      }
-      this.lixiTimeouts.delete(key);
-    }
-  }
-
-  addUserClick(lixiId: string, userId: string) {
-    if (!this.listUserClickLixi.has(lixiId)) {
-      this.listUserClickLixi.set(lixiId, new Set());
-    }
-
-    this.listUserClickLixi.get(lixiId)!.add(userId);
-  }
 
   async handleSubmitCreate(
     data,
@@ -130,13 +75,6 @@ export class LixiService {
     color,
     authorName,
   ) {
-    console.log('data', data);
-    console.log('authId', authId);
-    console.log('msgId', msgId);
-    console.log('clanId', clanId);
-    console.log('mode', mode);
-    console.log('isPublic', isPublic);
-    console.log('color', color);
     if (data.user_id !== authId) {
       return;
     }
@@ -145,7 +83,6 @@ export class LixiService {
 
     let parsedExtraData;
 
-    console.log('data.extra_data', data.extra_data);
     try {
       parsedExtraData = JSON.parse(data.extra_data);
     } catch (error) {
@@ -156,8 +93,6 @@ export class LixiService {
       });
     }
 
-    console.log('msgId', msgId);
-
     const description = parsedExtraData[`lixi-${msgId}-description-ip`] || '';
     const totalAmountStr =
       parsedExtraData[`lixi-${msgId}-totalAmount-ip`] || '0';
@@ -167,10 +102,6 @@ export class LixiService {
     const totalAmountValue = parseInt(totalAmountStr, 10);
     const minLixiValue = parseInt(minLixiStr, 10);
     const numLixiValue = parseInt(numLixiStr, 10);
-
-    console.log('totalAmountValue', totalAmountValue);
-    console.log('minLixiValue', minLixiValue);
-    console.log('numLixiValue', numLixiValue);
 
     if (
       isNaN(totalAmountValue) ||
@@ -219,7 +150,6 @@ export class LixiService {
     }
 
     let result = Array(numLixiValue).fill(minLixiValue);
-
     let diff = totalAmountValue - result.reduce((a, b) => a + b, 0);
     while (diff >= 10000) {
       const i = Math.floor(Math.random() * result.length);
@@ -293,7 +223,7 @@ export class LixiService {
       },
       {
         content: `${totalAmountValue}_${minLixiValue}_${numLixiValue}`,
-        lixiResult: [result, totalAmountValue, [], description],
+        lixiResult: [result, totalAmountValue, [] as LixiDetail[], description],
       },
     );
     return;
@@ -329,113 +259,146 @@ export class LixiService {
   }
 
   async handleSelectLixi(data: any) {
-    const key = `${data.message_id}-${data.channel_id}`;
+    try {
+      const key = `${data.message_id}-${data.channel_id}`;
 
-    const [
-      _,
-      typeButtonRes,
-      authId,
-      clanId,
-      mode,
-      isPublic,
-      color,
-      authorName,
-      totalAmountStr,
-      numLixiStr,
-      msgId,
-      minPerPersonStr,
-    ] = data.button_id.split('_');
-
-    const totalAmount = Number(totalAmountStr);
-    const numLixi = Number(numLixiStr);
-    const minPerPerson = Number(minPerPersonStr);
-    const user = await this.userRepository.findOne({
-      where: { user_id: data.user_id },
-    });
-
-    if (!user) return;
-    const activeBan = Array.isArray(user.ban)
-      ? user.ban.find(
-          (ban) =>
-            (ban.type === FuncType.LIXI || ban.type === FuncType.ALL) &&
-            ban.unBanTime > Math.floor(Date.now() / 1000),
-        )
-      : null;
-
-    if (activeBan) {
-      return;
-    }
-    const findMessageLixi = await this.mezonBotMessageRepository.findOne({
-      where: {
-        messageId: data.message_id,
-        channelId: data.channel_id,
-        deleted: false,
-      },
-    });
-
-    if (!findMessageLixi) return;
-    const [amounts, lixiMoney, details, description] =
-      findMessageLixi.lixiResult;
-
-    if (typeButtonRes === EmbebButtonType.CANCEL) {
-      await this.handleCancelLixi(data, findMessageLixi, authId, lixiMoney);
-    }
-    if (typeButtonRes === EmbebButtonType.SUBMITCREATE) {
-      await this.handleSubmitCreate(
-        data,
+      const [
+        _,
+        typeButtonRes,
         authId,
+        clanId,
+        mode,
+        isPublic,
+        color,
+        authorName,
+        totalAmountStr,
+        numLixiStr,
         msgId,
-        clanId,
-        mode,
-        isPublic,
-        color,
-        authorName,
-      );
-    }
-    if (typeButtonRes === EmbebButtonType.LIXI) {
-      if (this.lixiCanceled.get(key)) return;
+        minPerPersonStr,
+      ] = data.button_id.split('_');
 
-      if (data.user_id === authId) return;
+      const isPublicBoolean = isPublic === 'true' ? true : false;
+      const totalAmount = Number(totalAmountStr);
+      const numLixi = Number(numLixiStr);
+      const minPerPerson = minPerPersonStr ? Number(minPerPersonStr) : 10000;
 
-      if (amounts.length === 0) return;
+      const user = await this.userRepository.findOne({
+        where: { user_id: data.user_id },
+      });
 
-      const bucket = this.lixiClickBuckets.get(key);
-      if (bucket) {
-        const hasClicked = Array.from(bucket.values()).some((b) =>
-          b.users.some((u) => u.user_id === data.user_id),
-        );
-        if (hasClicked) return;
+      if (!user) return;
+
+      const activeBan = Array.isArray(user.ban)
+        ? user.ban.find(
+            (ban) =>
+              (ban.type === FuncType.LIXI || ban.type === FuncType.ALL) &&
+              ban.unBanTime > Math.floor(Date.now() / 1000),
+          )
+        : null;
+
+      if (activeBan) return;
+
+      const findMessageLixi = await this.mezonBotMessageRepository.findOne({
+        where: {
+          messageId: data.message_id,
+          channelId: data.channel_id,
+          deleted: false,
+        },
+      });
+
+      if (!findMessageLixi) return;
+
+      switch (typeButtonRes) {
+        case EmbebButtonType.CANCEL:
+          await this.handleCancelLixi(data, findMessageLixi, authId);
+          break;
+        case EmbebButtonType.SUBMITCREATE:
+          await this.handleSubmitCreate(
+            data,
+            authId,
+            msgId,
+            clanId,
+            mode,
+            isPublic,
+            color,
+            authorName,
+          );
+          break;
+        case EmbebButtonType.LIXI:
+          await this.handleLixi(
+            data,
+            key,
+            findMessageLixi,
+            authId,
+            numLixi,
+            totalAmount,
+            minPerPerson,
+            clanId,
+            mode,
+            isPublicBoolean,
+            color,
+            authorName,
+            user,
+          );
+          break;
+        default:
+          console.log(`Unhandled button type: ${typeButtonRes}`);
+          break;
       }
-
-      const hasUserInQueue =
-        this.listUserClickLixi.has(key) &&
-        this.listUserClickLixi.get(key)!.has(data.user_id);
-      if (hasUserInQueue) return;
-
-      if (this.lixiProcessingQueue.has(key) && !this.listUserClickLixi.has(key))
-        return;
-
-      this.addUserClick(key, data.user_id);
-
-      this.queueLixiDistribution(
-        data,
-        key,
-        authId,
-        numLixi,
-        totalAmount,
-        minPerPerson,
-        clanId,
-        mode,
-        isPublic,
-        color,
-        authorName,
-      );
+    } catch (error) {
+      console.error('Error in handleSelectLixi:', error);
     }
   }
 
-  async queueLixiDistribution(
+  private async handleCancelLixi(
+    data: any,
+    findMessageLixi: any,
+    authId: string,
+  ) {
+    if (data.user_id !== authId) return;
+
+    const key = `${data.message_id}-${data.channel_id}`;
+    const [_, lixiMoney] = findMessageLixi.lixiResult;
+
+    this.lixiCanceled.set(key, true);
+
+    try {
+      const channel = await this.client.channels.fetch(data.channel_id);
+      const messsage = await channel.messages.fetch(data.message_id);
+
+      const textCancel = 'Cancel lixi successful!';
+      const msgCancel = {
+        t: textCancel,
+        mk: [{ type: EMarkdownType.PRE, s: 0, e: textCancel.length }],
+      };
+
+      await this.mezonBotMessageRepository.update(
+        { id: findMessageLixi.id },
+        { deleted: true },
+      );
+
+      await messsage.update(msgCancel);
+
+      const findUser = await this.userRepository.findOne({
+        where: { user_id: authId },
+      });
+
+      if (!findUser) return;
+
+      findUser.amount = Number(findUser.amount) + Number(lixiMoney);
+      if (isNaN(findUser.amount)) return;
+
+      await this.userRepository.save(findUser);
+      this.cleanupLixi(key);
+    } catch (error) {
+      console.error('Error cancelling lixi:', error);
+    }
+  }
+
+  private async handleLixi(
     data: any,
     key: string,
+    findMessageLixi: any,
     authId: string,
     numLixi: number,
     totalAmount: number,
@@ -445,131 +408,266 @@ export class LixiService {
     isPublic: boolean,
     color: string,
     authorName: string,
+    user: any,
   ) {
-    console.log('key', key);
-    console.log('authId', authId);
-    console.log('numLixi', numLixi);
-    console.log('totalAmount', totalAmount);
-    console.log('minPerPerson', minPerPerson);
-    console.log('clanId', clanId);
-    console.log('mode', mode);
-    console.log('isPublic', isPublic);
-    console.log('color', color);
-    if (!this.lixiProcessingQueue.has(key)) {
-      this.lixiProcessingQueue.set(key, true);
+    if (data.user_id === authId) return;
+    if (this.lixiCanceled.get(key)) return;
 
-      const timeout = setTimeout(async () => {
-        try {
-          const channel = await this.client.channels.fetch(data.channel_id);
-          const message = await channel.messages.fetch(data.message_id);
+    const [amounts, lixiMoney, details, description] =
+      findMessageLixi.lixiResult;
 
-          const findMessageLixi = await this.mezonBotMessageRepository.findOne({
-            where: {
+    if (amounts.length === 0) return;
+    if (details.some((d) => d.user_id === data.user_id)) return;
+
+    if (!this.lixiClickBuckets.has(key)) {
+      this.lixiClickBuckets.set(key, new Map());
+    }
+    const bucket = this.lixiClickBuckets.get(key)!;
+
+    const hasClicked = Array.from(bucket.values()).some((b) =>
+      b.users.some((u) => u.user_id === data.user_id),
+    );
+    if (hasClicked) return;
+
+    const now = Math.floor(Date.now() / 1000);
+    const batchWindow = 1;
+    const batchTimestamp = Math.floor(now / batchWindow) * batchWindow;
+
+    if (!bucket.has(batchTimestamp)) {
+      bucket.set(batchTimestamp, { users: [] });
+    }
+
+    const targetBucket = bucket.get(batchTimestamp);
+    if (targetBucket) {
+      targetBucket.users.push({
+        user_id: data.user_id,
+        username: data.username || user.username,
+      });
+    }
+
+    if (!this.lixiTimeouts.has(key)) {
+      this.lixiTimeouts.set(key, new Map());
+    }
+
+    const timeoutMap = this.lixiTimeouts.get(key)!;
+    if (!timeoutMap.has(batchTimestamp)) {
+      const timeout = setTimeout(
+        () =>
+          this.processBatchLixi(
+            key,
+            batchTimestamp,
+            data,
+            amounts,
+            lixiMoney,
+            details,
+            description,
+            numLixi,
+            totalAmount,
+            authId,
+            clanId,
+            mode,
+            isPublic,
+            color,
+            authorName,
+            minPerPerson,
+          ),
+        500,
+      );
+
+      timeoutMap.set(batchTimestamp, timeout);
+    }
+  }
+
+  private async processBatchLixi(
+    key: string,
+    timestamp: number,
+    data: any,
+    amounts: number[],
+    lixiMoney: number,
+    details: any[],
+    description: string,
+    numLixi: number,
+    totalAmount: number,
+    authId: string,
+    clanId: string,
+    mode: string,
+    isPublic: boolean,
+    color: string,
+    authorName: string,
+    minPerPerson: number,
+  ) {
+    if (this.lixiCanceled.get(key)) {
+      this.cleanupLixi(key);
+      return;
+    }
+
+    try {
+      const bucket = this.lixiClickBuckets.get(key);
+      if (!bucket) return;
+
+      const bucketAtTime = bucket.get(timestamp);
+      if (!bucketAtTime || !bucketAtTime.users.length) return;
+
+      const uniqueUsers = bucketAtTime.users.filter(
+        (u, index, self) =>
+          self.findIndex((u2) => u2.user_id === u.user_id) === index &&
+          !details.some((d) => d.user_id === u.user_id),
+      );
+
+      if (!uniqueUsers.length) return;
+
+      const eligibleUsers = this.getRandomUsers(
+        uniqueUsers,
+        Math.min(uniqueUsers.length, amounts.length),
+      );
+
+      if (!eligibleUsers.length) return;
+
+      const userIds = eligibleUsers.map((u) => u.user_id);
+
+      const users = await this.userRepository.find({
+        where: { user_id: In(userIds) },
+      });
+
+      const userMap = new Map(users.map((u) => [u.user_id, u]));
+
+      let chosenLixiAmount = 0;
+      const newDetails = [...details];
+      const amountsToUpdate = [...amounts];
+      const updatedUsers: User[] = [];
+
+      for (const u of eligibleUsers) {
+        if (amountsToUpdate.length === 0) break;
+
+        const user = userMap.get(u.user_id);
+        if (!user) continue;
+
+        const chosenAmount = amountsToUpdate.shift() || minPerPerson;
+        const currentAmount = Number(user.amount);
+
+        if (isNaN(currentAmount) || isNaN(chosenAmount)) continue;
+
+        newDetails.push({
+          user_id: u.user_id,
+          username: user.username,
+          amount: chosenAmount,
+        });
+
+        user.amount = currentAmount + chosenAmount;
+        chosenLixiAmount += chosenAmount;
+        updatedUsers.push(user);
+      }
+
+      await this.userRepository.manager.transaction(
+        async (transactionalEntityManager) => {
+          await transactionalEntityManager.update(
+            MezonBotMessage,
+            {
               messageId: data.message_id,
               channelId: data.channel_id,
-              deleted: false,
             },
-          });
-
-          if (!findMessageLixi) return;
-          const [amounts, lixiMoney, details, description] =
-            findMessageLixi.lixiResult;
-
-          const allUsers = this.getClickedUsers(key).filter(
-            (userId) => userId !== authId,
+            {
+              lixiResult: [
+                amountsToUpdate,
+                lixiMoney - chosenLixiAmount,
+                newDetails,
+                description,
+              ],
+            },
           );
 
-          let chosenLixiAmount = 0;
-          const selectedUsers = this.getRandomUsers(
-            allUsers,
-            Math.min(allUsers.length, amounts.length),
-          );
-
-          console.log('selectedUsers', selectedUsers);
-
-          for (const userId of selectedUsers) {
-            const chosenAmount =
-              amounts.length > 0 ? amounts.splice(0, 1)[0] : minPerPerson;
-
-            const findUser = await this.userRepository.findOne({
-              where: { user_id: userId },
-            });
-            if (!findUser) continue;
-
-            const currentAmount = Number(findUser.amount);
-            const amountToAdd = Number(chosenAmount);
-
-            if (isNaN(currentAmount) || isNaN(amountToAdd)) {
-              continue;
-            }
-
-            details.push({
-              username: findUser.username,
-              amount: chosenAmount,
-            });
-
-            findUser.amount = currentAmount + amountToAdd;
-            chosenLixiAmount += chosenAmount;
-            await this.userRepository.save(findUser);
+          if (updatedUsers.length) {
+            await transactionalEntityManager.save(updatedUsers);
           }
+        },
+      );
 
-          await this.mezonBotMessageRepository.update(
-            {
-              messageId: data.message_id,
-              channelId: data.channel_id,
-            },
-            {
-              lixiResult: [amounts, lixiMoney - chosenLixiAmount, details],
-            },
-          );
+      if (chosenLixiAmount > 0) {
+        const channel = await this.client.channels.fetch(data.channel_id);
+        if (!channel) return;
 
-          const receiverList = details
-            .map((d) => `- ${d.username}: ${d.amount.toLocaleString()}đ`)
-            .join('\n');
+        const message = await channel.messages.fetch(data.message_id);
+        if (!message) return;
 
-          const resultEmbed = {
-            color: getRandomColor(),
-            title: `[Lixi] ${description || ''}`,
-            description: `Tổng: ${totalAmount.toLocaleString()}đ
-                Số lượng lixi: ${numLixi - amounts.length}/${numLixi}
-                Người nhận:
-                ${receiverList}
-                `,
+        const receiverList = newDetails
+          .map((d) => `- ${d.username}: ${d.amount.toLocaleString()}đ`)
+          .join('\n');
+
+        const resultEmbed = {
+          color: getRandomColor(),
+          title: `[Lì xì] ${description || ''}`,
+          description: `Tổng: ${totalAmount.toLocaleString()}đ
+            Số lượng lì xì: ${numLixi - amountsToUpdate.length}/${numLixi}
+            Người nhận: 
+            ${receiverList}
+            `,
+        };
+
+        if (amountsToUpdate.length === 0) {
+          await message.update({ embed: [resultEmbed] });
+          this.cleanupLixi(key);
+        } else {
+          const lixiDetail = {
+            totalAmount: totalAmount,
+            numLixi: numLixi,
           };
 
-          if (amounts.length === 0) {
-            await message.update({ embed: [resultEmbed] });
-          } else {
-            const lixiDetail = {
-              totalAmount: totalAmount,
-              numLixi: numLixi,
-            };
+          const components = this.generateButtonComponents(
+            {
+              sender_id: authId,
+              clan_id: clanId,
+              mode: mode,
+              is_public: isPublic,
+              color: color,
+              clan_nick: authorName,
+              totalAmount,
+              numLixi,
+              minPerPerson,
+            },
+            lixiDetail,
+          );
 
-            const components = this.generateButtonComponents(
-              {
-                sender_id: authId,
-                clan_id: clanId,
-                mode: mode,
-                is_public: isPublic,
-                color: color,
-                clan_nick: authorName,
-                totalAmount: totalAmount,
-                numLixi: numLixi,
-                minPerPerson: minPerPerson,
-              },
-              lixiDetail,
-            );
-            await message.update({ embed: [resultEmbed], components });
-          }
-        } catch (error) {
-          console.error('Lỗi khi xử lý lixi:', error);
-        } finally {
-          this.lixiProcessingQueue.delete(key);
-          this.lixiDistributionTimeouts.delete(key);
+          await message.update({ embed: [resultEmbed], components });
         }
-      }, 1000);
+      }
 
-      this.lixiDistributionTimeouts.set(key, timeout);
+      bucket.delete(timestamp);
+
+      const timeoutMap = this.lixiTimeouts.get(key);
+      if (timeoutMap && timeoutMap.has(timestamp)) {
+        timeoutMap.delete(timestamp);
+      }
+
+      if (bucket.size === 0) {
+        this.lixiClickBuckets.delete(key);
+        this.lixiTimeouts.delete(key);
+      }
+    } catch (error) {
+      console.error('Error processing lixi batch:', error);
     }
+  }
+
+  private cleanupLixi(key: string) {
+    this.lixiClickBuckets.delete(key);
+    const timeoutMap = this.lixiTimeouts.get(key);
+    if (timeoutMap) {
+      for (const timeout of timeoutMap.values()) {
+        clearTimeout(timeout);
+      }
+      this.lixiTimeouts.delete(key);
+    }
+    this.lixiCanceled.delete(key);
+  }
+
+  private getRandomUsers(users: any[], count: number): any[] {
+    if (users.length <= count) return users;
+
+    const result = [...users];
+    for (let i = result.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [result[i], result[j]] = [result[j], result[i]];
+    }
+
+    return result.slice(0, count);
   }
 }
