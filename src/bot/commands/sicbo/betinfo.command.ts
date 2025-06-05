@@ -33,7 +33,7 @@ export class BetInfoCommand extends CommandMessage {
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: content.length,
           },
@@ -50,7 +50,7 @@ export class BetInfoCommand extends CommandMessage {
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: content.length,
           },
@@ -74,7 +74,6 @@ export class BetInfoCommand extends CommandMessage {
             inline: false,
           },
         ],
-        
       },
     ];
 

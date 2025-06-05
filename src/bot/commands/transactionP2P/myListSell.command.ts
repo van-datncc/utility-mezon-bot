@@ -26,14 +26,13 @@ export class MySellCommand extends CommandMessage {
   async execute(args: string[], message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
     if (!message.clan_id) {
-      const content =
-        '```' + `[mysellorder] Bạn chỉ có thể mua bán trong clan!` + '```';
+      const content = `[mysellorder] Bạn chỉ có thể mua bán trong clan!`;
 
       return await messageChannel?.reply({
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: content.length + 6,
           },
@@ -41,14 +40,13 @@ export class MySellCommand extends CommandMessage {
       });
     }
     if (message.username === 'Anonymous') {
-      const content =
-        '```' + `[mysellorder] Anonymous can't use this command!` + '```';
+      const content = `[mysellorder] Anonymous can't use this command!`;
 
       return await messageChannel?.reply({
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: content.length + 6,
           },

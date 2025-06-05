@@ -31,14 +31,13 @@ export class LixiCommand extends CommandMessage {
   async execute(args: string[], message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
     if (message.username === 'Anonymous') {
-      const content =
-        '```' + `[Lixi] Anonymous can't use this command!` + '```';
+      const content = `[Lixi] Anonymous can't use this command!`;
 
       return await messageChannel?.reply({
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: content.length + 6,
           },
@@ -54,7 +53,7 @@ export class LixiCommand extends CommandMessage {
         t: EUserError.INVALID_USER,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: EUserError.INVALID_USER.length,
           },
@@ -76,16 +75,16 @@ export class LixiCommand extends CommandMessage {
         timeZone: 'Asia/Ho_Chi_Minh',
         hour12: false,
       });
-      const content = activeBan.note
+      const content = activeBan.note;
 
       const msgText = `❌ Bạn đang bị cấm thực hiện hành động "lixi" đến ${formattedTime}\n   - Lý do: ${content}\n NOTE: Hãy liên hệ admin để mua vé unban`;
       return await messageChannel?.reply({
-        t: '```' + msgText + '```',
+        t: msgText,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
-            e: ('```' + msgText + '```').length,
+            e: msgText.length,
           },
         ],
       });

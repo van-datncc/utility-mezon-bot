@@ -22,10 +22,10 @@ export class WelcomeMsgCommand extends CommandMessage {
       'welcome message content is not given! \n Example: *welcomemsg welcome message content \n [username]: to get the user name \n [clanname]: to get clan name';
     if (!args[0] || !message.content.t) {
       return await messageChannel?.reply({
-        t: '```' + messageContent + '```',
+        t: messageContent,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: messageContent.length + 6,
           },
@@ -44,10 +44,10 @@ export class WelcomeMsgCommand extends CommandMessage {
     };
     await this.welcomeMessageRepository.upsert(dataMezonBotMessage, ['botId']);
     return await messageChannel?.reply({
-      t: '```' + contentWithoutCommand + '```',
+      t: contentWithoutCommand,
       mk: [
         {
-          type: EMarkdownType.TRIPLE,
+          type: EMarkdownType.PRE,
           s: 0,
           e: contentWithoutCommand.length + 6,
         },

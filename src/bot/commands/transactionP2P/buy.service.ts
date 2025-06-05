@@ -199,10 +199,10 @@ export class BuyService {
         if (data.user_id !== authId) {
           return;
         }
-        const textCancel = '```Cancel buy successful!```';
+        const textCancel = 'Cancel buy successful!';
         const msgCancel = {
           t: textCancel,
-          mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: textCancel.length }],
+          mk: [{ type: EMarkdownType.PRE, s: 0, e: textCancel.length }],
         };
         await this.mezonBotMessageRepository.update(
           {
@@ -233,17 +233,14 @@ export class BuyService {
           !Number.isInteger(totalAmountValue) ||
           totalAmountValue <= 0
         ) {
-          const content =
-            '```' +
-            `[buy]
-        - [totalAmount]: Tổng số tiền buy phải là số tự nhiên lớn hơn 0` +
-            '```';
+          const content = `[buy]
+        - [totalAmount]: Tổng số tiền buy phải là số tự nhiên lớn hơn 0`;
 
           return await messsage.update({
             t: content,
             mk: [
               {
-                type: EMarkdownType.TRIPLE,
+                type: EMarkdownType.PRE,
                 s: 0,
                 e: content.length + 6,
               },
@@ -364,13 +361,10 @@ export class BuyService {
             (findUser.amount || 0) < Number(buyOrder.amount) ||
             isNaN(findUser.amount)
           ) {
-            const content =
-              '```' +
-              `[transacion] - \n❌Số dư của bạn không đủ hoặc không hợp lệ!` +
-              '```';
+            const content = `[transacion] - \n❌Số dư của bạn không đủ hoặc không hợp lệ!`;
             return await seller.sendDM({
               t: content,
-              mk: [{ type: EMarkdownType.TRIPLE, s: 0, e: content.length }],
+              mk: [{ type: EMarkdownType.PRE, s: 0, e: content.length }],
             });
           }
 
