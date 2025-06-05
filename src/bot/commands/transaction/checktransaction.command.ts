@@ -33,7 +33,7 @@ export class ChecktransactionCommand extends CommandMessage {
           {
             type: EMarkdownType.PRE,
             s: 0,
-            e: content.length + 6,
+            e: content.length,
           },
         ],
       });
@@ -53,15 +53,14 @@ export class ChecktransactionCommand extends CommandMessage {
         findTransaction?.createAt &&
         new Date(transaction.create_time).getTime() < findTransaction.createAt
       ) {
-        const content = `[Transaction] transaction này đã tồn tại
-        `;
+        const content = `[Transaction] transaction này đã tồn tại`;
         return await messageChannel?.reply({
           t: content,
           mk: [
             {
               type: EMarkdownType.PRE,
               s: 0,
-              e: content.length + 6,
+              e: content.length,
             },
           ],
         });
@@ -99,43 +98,41 @@ export class ChecktransactionCommand extends CommandMessage {
         findUser.amount = Number(findUser.amount) + Number(transaction.amount);
         await this.userRepository.save(findUser);
 
-        const content = `[Transaction] Đã cập nhật lại token
-        `;
+        const content = `[Transaction] Đã cập nhật lại token`;
         return await messageChannel?.reply({
           t: content,
           mk: [
             {
               type: EMarkdownType.PRE,
               s: 0,
-              e: content.length + 6,
+              e: content.length,
             },
           ],
         });
       }
 
       const content = `[Transaction] transaction không hợp lệ
-        `;
+`;
       return await messageChannel?.reply({
         t: content,
         mk: [
           {
             type: EMarkdownType.PRE,
             s: 0,
-            e: content.length + 6,
+            e: content.length,
           },
         ],
       });
     }
 
-    const content = `[Transaction] transaction này đã tồn tại
-        `;
+    const content = `[Transaction] transaction này đã tồn tại`;
     return await messageChannel?.reply({
       t: content,
       mk: [
         {
           type: EMarkdownType.PRE,
           s: 0,
-          e: content.length + 6,
+          e: content.length,
         },
       ],
     });

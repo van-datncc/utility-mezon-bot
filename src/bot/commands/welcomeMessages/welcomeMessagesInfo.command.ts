@@ -28,7 +28,7 @@ export class WelcomeMsgInfoCommand extends CommandMessage {
           {
             type: EMarkdownType.PRE,
             s: 0,
-            e: `welcomeMessage not updated yet`.length + 6,
+            e: `welcomeMessage not updated yet`.length,
           },
         ],
       });
@@ -39,7 +39,7 @@ export class WelcomeMsgInfoCommand extends CommandMessage {
         {
           type: EMarkdownType.PRE,
           s: 0,
-          e: welcomeMessage.content.length + 6,
+          e: welcomeMessage.content.length,
         },
       ],
     });
