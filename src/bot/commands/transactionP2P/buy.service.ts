@@ -242,7 +242,7 @@ export class BuyService {
               {
                 type: EMarkdownType.PRE,
                 s: 0,
-                e: content.length + 6,
+                e: content.length,
               },
             ],
           });

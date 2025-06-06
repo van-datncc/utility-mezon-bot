@@ -34,7 +34,7 @@ export class ListSellCommand extends CommandMessage {
           {
             type: EMarkdownType.PRE,
             s: 0,
-            e: content.length + 6,
+            e: content.length,
           },
         ],
       });
@@ -48,7 +48,7 @@ export class ListSellCommand extends CommandMessage {
           {
             type: EMarkdownType.PRE,
             s: 0,
-            e: content.length + 6,
+            e: content.length,
           },
         ],
       });

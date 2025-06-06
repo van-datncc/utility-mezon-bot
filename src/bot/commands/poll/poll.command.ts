@@ -52,7 +52,7 @@ export class PollCommand extends CommandMessage {
           {
             type: EMarkdownType.PRE,
             s: 0,
-            e: messageContent.length + 6,
+            e: messageContent.length,
           },
         ],
       });

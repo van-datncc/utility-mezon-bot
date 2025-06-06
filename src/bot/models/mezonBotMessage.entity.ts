@@ -6,6 +6,12 @@ export interface PollResult {
   emoji: string;
 }
 
+export interface LixiDetail {
+  user_id?: string;
+  username: string;
+  amount: number;
+}
+
 @Index(['messageId', 'channelId', 'userId'])
 @Entity(TABLE.MEZON_BOT_MESSAGE)
 export class MezonBotMessage {
@@ -37,13 +43,5 @@ export class MezonBotMessage {
   roleResult: string[];
 
   @Column({ type: 'jsonb', nullable: true, default: () => "'[]'" })
-  lixiResult: [
-    number[],
-    number,
-    {
-      username: string;
-      amount: number;
-    }[],
-    string
-  ];
+  lixiResult: [number[], number, LixiDetail[], string];
 }
