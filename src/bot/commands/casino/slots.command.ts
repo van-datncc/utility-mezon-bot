@@ -12,6 +12,10 @@ import { Repository } from 'typeorm';
 import { getRandomColor } from 'src/bot/utils/helps';
 import { EUserError } from 'src/bot/constants/error';
 import { FuncType } from 'src/bot/constants/configs';
+import {
+  JackPotTransaction,
+  JackpotType,
+} from 'src/bot/models/jackPotTransaction.entity';
 
 const slotItems = [
   '1.JPG',
@@ -32,15 +36,35 @@ const slotItems = [
 
 @Command('slots')
 export class SlotsCommand extends CommandMessage {
+  private queue: ChannelMessage[] = [];
+  private running = false;
+
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(JackPotTransaction)
+    private jackPotTransaction: Repository<JackPotTransaction>,
     clientService: MezonClientService,
   ) {
     super(clientService);
+    this.startWorker();
   }
 
   async execute(args: string[], message: ChannelMessage) {
+    this.queue.push(message);
+  }
+
+  private async startWorker() {
+    if (this.running) return;
+    this.running = true;
+    setInterval(async () => {
+      if (this.queue.length === 0) return;
+      const msg = this.queue.shift();
+      if (msg) await this.processSlotMessage(msg);
+    }, 15);
+  }
+
+  private async processSlotMessage(message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
     const money = 5000;
 
@@ -56,11 +80,7 @@ export class SlotsCommand extends CommandMessage {
       return await messageChannel?.reply({
         t: EUserError.INVALID_USER,
         mk: [
-          {
-            type: EMarkdownType.PRE,
-            s: 0,
-            e: EUserError.INVALID_USER.length,
-          },
+          { type: EMarkdownType.PRE, s: 0, e: EUserError.INVALID_USER.length },
         ],
       });
     }
@@ -83,13 +103,7 @@ export class SlotsCommand extends CommandMessage {
       const msgText = `❌ Bạn đang bị cấm thực hiện hành động "slots" đến ${formattedTime}\n   - Lý do: ${content}\n NOTE: Hãy liên hệ admin để mua vé unban`;
       return await messageChannel?.reply({
         t: msgText,
-        mk: [
-          {
-            type: EMarkdownType.PRE,
-            s: 0,
-            e: msgText.length,
-          },
-        ],
+        mk: [{ type: EMarkdownType.PRE, s: 0, e: msgText.length }],
       });
     }
 
@@ -123,44 +137,66 @@ export class SlotsCommand extends CommandMessage {
       number[1] === number[2] &&
       slotItems[number[0]] === '1.JPG'
     ) {
-      wonAmount = botInfo?.jackPot;
+      wonAmount = botInfo.jackPot;
       isJackPot = true;
       win = true;
     } else if (number[0] === number[1] && number[1] === number[2]) {
-      wonAmount = Math.floor((botInfo?.jackPot || 0) * 0.3);
+      wonAmount = Math.floor(botInfo.jackPot * 0.3);
       win = true;
-    } else if (
-      number[0] === number[1] ||
-      number[0] === number[2] ||
-      number[1] === number[2]
-    ) {
+    } else if (new Set(number).size <= 2) {
       wonAmount = money * 2;
-      if (botInfo?.jackPot < betMoney * 2) {
-        wonAmount = botInfo?.jackPot;
+      if (botInfo.jackPot < betMoney * 2) {
+        wonAmount = botInfo.jackPot;
         isJackPot = true;
       }
       win = true;
     }
-    findUser.amount = win
-      ? Number(findUser.amount) + Number(wonAmount)
-      : Number(findUser.amount) - Number(money);
-    await this.userRepository.save(findUser);
-    botInfo.jackPot = win
-      ? Number(botInfo.jackPot) - Number(wonAmount)
-      : Number(botInfo.jackPot) + Number(betMoney);
-    botInfo.amount = Number(botInfo.amount) + Number(money - betMoney);
+
+    const userAmount = Number(findUser.amount);
+    const botAmount = Number(botInfo.amount);
+    const botJackPot = Number(botInfo.jackPot);
+
+    const newUserAmount = win ? userAmount + wonAmount : userAmount - money;
+    let newJackPot = win ? botJackPot - wonAmount : botJackPot + betMoney;
+    let newBotAmount = botAmount + (money - betMoney);
 
     if (isJackPot) {
-      if (botInfo.amount > 500000) {
-        botInfo.jackPot = 500000;
-        botInfo.amount =
-          Number(botInfo.amount) + Number(money - betMoney) - 500000;
+      if (newBotAmount > 500000) {
+        newJackPot = 500000;
+        newBotAmount -= 500000;
       } else {
-        botInfo.jackPot = botInfo.amount;
-        botInfo.amount = Number(botInfo.amount) - Number(botInfo.jackPot);
+        newJackPot = newBotAmount;
+        newBotAmount = 0;
       }
     }
-    await this.userRepository.save(botInfo);
+
+    await Promise.all([
+      this.userRepository.update(
+        { user_id: message.sender_id },
+        { amount: newUserAmount },
+      ),
+      this.userRepository.update(
+        { user_id: process.env.UTILITY_BOT_ID },
+        { amount: newBotAmount, jackPot: newJackPot },
+      ),
+    ]);
+
+    if (win && wonAmount !== 10000) {
+      await this.jackPotTransaction.insert({
+        user_id: message.sender_id,
+        amount: wonAmount,
+        type: isJackPot ? JackpotType.JACKPOT : JackpotType.WIN,
+        createAt: Date.now(),
+        clan_id: message.clan_id,
+        channel_id: message.channel_id,
+      });
+      const clan = this.client.clans.get('0');
+      const user = await clan?.users.fetch('1827994776956309504');
+      await user?.sendDM({
+        t: `${message.sender_id} vửa nổ jackpot ${isJackPot ? '777' : ''} ${wonAmount}đ`,
+      });
+    }
+
     const resultEmbed = {
       color: getRandomColor(),
       title: '🎰 Kết quả Slots 🎰',
@@ -185,10 +221,9 @@ export class SlotsCommand extends CommandMessage {
         },
       ],
     };
+
     const messBot = await messageChannel?.reply({ embed: [resultEmbed] });
-    if (!messBot) {
-      return;
-    }
+    if (!messBot) return;
 
     const msg: ChannelMessage = {
       mode: messBot.mode,
@@ -214,6 +249,7 @@ export class SlotsCommand extends CommandMessage {
             Jackpot: ${Math.floor(botInfo.jackPot)}
             Bạn đã cược: ${money}
             Bạn ${win ? 'thắng' : 'thua'}: ${win ? wonAmount : money}
+            Jackpot mới: ${newJackPot}
             `,
         fields: [
           {
@@ -239,6 +275,5 @@ export class SlotsCommand extends CommandMessage {
       };
       messageBot?.update({ embed: [msgResults] });
     }, 4000);
-    return;
   }
 }
