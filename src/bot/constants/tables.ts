@@ -6,5 +6,6 @@ export const TABLE = {
   USER_SICBO: 'vibot_userSicbos',
   BLOCK_RUT: 'vibot_blockRut',
   TRANSACTION_P2P: 'vibot_transactionP2P',
-  TRANSACTION: 'vibot_transaction'
+  TRANSACTION: 'vibot_transaction',
+  JACKPOT_TRANSACTION: 'vibot_jackPotTransaction'
 };

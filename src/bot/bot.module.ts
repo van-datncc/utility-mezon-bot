@@ -55,6 +55,8 @@ import { ListSellCommand } from './commands/transactionP2P/listSell.command';
 import { MySellCommand } from './commands/transactionP2P/myListSell.command';
 import { Transaction } from './models/transaction.entity';
 import { ChecktransactionCommand } from './commands/transaction/checktransaction.command';
+import { JackPotTransaction } from './models/jackPotTransaction.entity';
+import { UpdateCommand } from './commands/update/update.command';
 
 @Module({
   imports: [
@@ -70,7 +72,8 @@ import { ChecktransactionCommand } from './commands/transaction/checktransaction
       UserSicbo,
       BlockRut,
       TransactionP2P,
-      Transaction
+      Transaction,
+      JackPotTransaction,
     ]),
     HttpModule,
   ],
@@ -116,7 +119,8 @@ import { ChecktransactionCommand } from './commands/transaction/checktransaction
     SellService,
     ListSellCommand,
     MySellCommand,
-    ChecktransactionCommand
+    ChecktransactionCommand,
+    UpdateCommand,
   ],
   controllers: [],
 })

@@ -125,7 +125,7 @@ export class WithdrawTokenCommand extends CommandMessage {
         };
         await this.client.sendToken(dataSendToken);
 
-        const successMessage = `...💸Rút ${money} token thành công...`;
+        const successMessage = `💸Rút ${money} token thành công`;
         await messageChannel?.reply({
           t: successMessage,
           mk: [{ type: EMarkdownType.PRE, s: 0, e: successMessage.length }],

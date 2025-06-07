@@ -21,11 +21,12 @@ export class ChecktransactionCommand extends CommandMessage {
   }
 
   async execute(args: string[], message: ChannelMessage) {
-    console.log('args: ', args[0]);
     const messageChannel = await this.getChannelMessage(message);
 
-    if (message.username === 'Anonymous') {
-      const content = `[mybuyorder] Anonymous can't use this command!`;
+    if (message.username === 'Anonymous' || !args[0]) {
+      const content = !args[0]
+        ? 'Thiếu transactionId!'
+        : `[chk] Anonymous can't use this command!`;
 
       return await messageChannel?.reply({
         t: content,
@@ -44,16 +45,28 @@ export class ChecktransactionCommand extends CommandMessage {
     if (!findTransaction) {
       const channel = await this.client.channels.fetch(message.channel_id);
       const user = await channel.clan.users.fetch(message.sender_id);
-      const transaction = await user.listTransactionDetail(args[0]);
-      const findTransaction = await this.transactionRepository.findOne({
-        where: {},
-        order: { id: 'ASC' },
+      let transaction;
+      try {
+        transaction = await user.listTransactionDetail(args[0]);
+      } catch (error) {
+        const content = `Lỗi khi check transaction!`;
+
+      return await messageChannel?.reply({
+        t: content,
+        mk: [
+          {
+            type: EMarkdownType.PRE,
+            s: 0,
+            e: content.length,
+          },
+        ],
       });
-      if (
-        findTransaction?.createAt &&
-        new Date(transaction.create_time).getTime() < findTransaction.createAt
-      ) {
-        const content = `[Transaction] transaction này đã tồn tại`;
+      }
+      const cutoffDate = new Date('2025-06-06T00:00:00.000Z'); // sau ngày 07/06/2025 thì return
+      console.log('transaction', transaction)
+      const createdAt = new Date(transaction?.create_time);
+      if (!transaction || createdAt < cutoffDate) {
+        const content = `[Transaction] transaction không tồn tại hoặc quá ngày kiểm tra`;
         return await messageChannel?.reply({
           t: content,
           mk: [
@@ -95,8 +108,8 @@ export class ChecktransactionCommand extends CommandMessage {
             ],
           });
         }
-        findUser.amount = Number(findUser.amount) + Number(transaction.amount);
-        await this.userRepository.save(findUser);
+        const newUserAmount = Number(findUser.amount) + Number(transaction.amount);
+        await this.userRepository.update({user_id: message.sender_id}, {amount: newUserAmount});
 
         const content = `[Transaction] Đã cập nhật lại token`;
         return await messageChannel?.reply({
@@ -111,8 +124,7 @@ export class ChecktransactionCommand extends CommandMessage {
         });
       }
 
-      const content = `[Transaction] transaction không hợp lệ
-`;
+      const content = `[Transaction] transaction không hợp lệ`;
       return await messageChannel?.reply({
         t: content,
         mk: [

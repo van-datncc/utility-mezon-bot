@@ -21,7 +21,7 @@ export class HelpCommand extends CommandMessage {
     const allCommandsCustom =
       this.dynamicCommandService.getDynamicCommandList();
     const hidenCommandList = [
-      'holiday',
+      'update',
       'register',
       'toggleactive',
       'checkchannel',
@@ -32,18 +32,13 @@ export class HelpCommand extends CommandMessage {
       (item) => !hidenCommandList.includes(item),
     );
     const messageContent =
-      'KOMU - Help Menu' +
+      'Utility - Help Menu' +
       '\n' +
-      '• KOMU (' +
+      '• Utility (' +
       allCommandKeys.length +
       ')' +
       '\n' +
-      allCommandKeys.join(', ') +
-      '\n• Custom Command (' +
-      allCommandsCustom.length +
-      ')' +
-      '\n' +
-      allCommandsCustom.join(', ');
+      allCommandKeys.join(', ');
     const messageSent = await messageChannel?.reply({
       t: messageContent,
       mk: [{ type: EMarkdownType.PRE, s: 0, e: messageContent.length }],
