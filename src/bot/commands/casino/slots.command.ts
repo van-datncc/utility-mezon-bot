@@ -11,7 +11,7 @@ import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { Repository } from 'typeorm';
 import { getRandomColor } from 'src/bot/utils/helps';
 import { EUserError } from 'src/bot/constants/error';
-import { FuncType } from 'src/bot/constants/configs';
+import { EmbedProps, FuncType } from 'src/bot/constants/configs';
 import {
   JackPotTransaction,
   JackpotType,
@@ -50,7 +50,165 @@ export class SlotsCommand extends CommandMessage {
     this.startWorker();
   }
 
+  async getLast10JackpotWinners() {
+    const rawData = await this.jackPotTransaction.find({
+      order: { createAt: 'DESC' },
+      take: 10,
+    });
+    return await Promise.all(
+      rawData.map(async (r) => {
+        const findUser = await this.userRepository.findOne({
+          where: { user_id: r.user_id },
+        });
+        const date = new Date(+r.createAt);
+        return {
+          user_id: r.user_id,
+          username: findUser?.clan_nick || findUser?.username || '',
+          amount: r.amount,
+          type: r.type,
+          time: date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
+        };
+      }),
+    );
+  }
+
+  async getDataBuyUserId(userId: string) {
+    return await this.jackPotTransaction
+      .createQueryBuilder('jackpot')
+      .select('jackpot.user_id', 'user_id')
+      .addSelect('COUNT(*)', 'totalTimes')
+      .addSelect('SUM(jackpot.amount)', 'totalAmount')
+      .addSelect(
+        `SUM(CASE WHEN jackpot.type = 'jackPot' THEN 1 ELSE 0 END)`,
+        'jackpotCount',
+      )
+      .where('jackpot.user_id = :userId', { userId })
+      .groupBy('jackpot.user_id')
+      .getRawOne();
+  }
+
+  async getTop5JackpotUsers() {
+    const rawData = await this.jackPotTransaction
+      .createQueryBuilder('jackpot')
+      .select('jackpot.user_id', 'user_id')
+      .addSelect('SUM(jackpot.amount)', 'totalamount')
+      .addSelect('COUNT(*)', 'totalTimes')
+      .addSelect(
+        `SUM(CASE WHEN jackpot.type = 'win' THEN 1 ELSE 0 END)`,
+        'winCount',
+      )
+      .addSelect(
+        `SUM(CASE WHEN jackpot.type = 'jackPot' THEN 1 ELSE 0 END)`,
+        'jackpotCount',
+      )
+      .groupBy('jackpot.user_id')
+      .orderBy('totalamount', 'DESC')
+      .limit(5)
+      .getRawMany();
+
+    return await Promise.all(
+      rawData.map(async (r) => {
+        const findUser = await this.userRepository.findOne({
+          where: { user_id: r.user_id },
+        });
+        return {
+          user_id: r.user_id,
+          username: findUser?.clan_nick || findUser?.username || '',
+          totalAmount: parseFloat(r.totalamount),
+          totalTimes: parseInt(r.totalTimes, 10),
+          totalUsed: +(findUser?.amountUsedSlots ?? 0),
+          jackpotCount: +r.jackpotCount,
+          winCount: +r.winCount,
+        };
+      }),
+    );
+  }
+
   async execute(args: string[], message: ChannelMessage) {
+    if (args[0] === 'top10') {
+      const messageChannel = await this.getChannelMessage(message);
+      const top10List = await this.getLast10JackpotWinners();
+      const messageArray: string[] = [];
+      top10List.forEach((data, index) =>
+        messageArray.push(
+          `${index + 1}. **${data.username}** nổ ${(+data.amount).toLocaleString('vi-VN')}đ lúc ${data.time}`,
+        ),
+      );
+      const messageContent = messageArray.length
+        ? messageArray.join('\n\n')
+        : 'Chưa có ai nổ hũ rồi! Mọi người *slots nhiều hơn nàoooo!';
+      const embed: EmbedProps[] = [
+        {
+          color: getRandomColor(),
+          title: `TOP 10 NGƯỜI NỔ HŨ GẦN NHẤT`,
+          description: '```' + messageContent + '```',
+          timestamp: new Date().toISOString(),
+          footer: {
+            text: 'Powered by Mezon',
+            icon_url:
+              'https://cdn.mezon.vn/1837043892743049216/1840654271217930240/1827994776956309500/857_0246x0w.webp',
+          },
+        },
+      ];
+      return await messageChannel?.reply({ embed });
+    }
+    if (args[0] === 'top5') {
+      const messageChannel = await this.getChannelMessage(message);
+      const top5List = await this.getTop5JackpotUsers();
+      const messageArray: string[] = [];
+      top5List.forEach((data, index) =>
+        messageArray.push(
+          `${index + 1}. **${data.username}** \n - Tổng số lần nổ: ${data.totalTimes} lần \n - Tổng lần nổ 777: ${data.jackpotCount} lần\n - Tổng tiền nhận được: ${data.totalAmount.toLocaleString('vi-VN')}đ \n - Tổng tiền đã dùng: ${data.totalUsed.toLocaleString('vi-VN')}đ`,
+        ),
+      );
+      const messageContent = messageArray.length
+        ? messageArray.join('\n\n')
+        : 'Chưa có ai nổ hũ rồi! Mọi người *slots nhiều hơn nàoooo!';
+      const embed: EmbedProps[] = [
+        {
+          color: getRandomColor(),
+          title: `TOP 5 NGƯỜI NỔ HŨ NHIỀU NHẤT`,
+          description:
+            '```' +
+            messageContent +
+            '\n\n(Tiền đã nhận chưa tính những lần win 10.000đ)' +
+            '```',
+          timestamp: new Date().toISOString(),
+          footer: {
+            text: 'Powered by Mezon',
+            icon_url:
+              'https://cdn.mezon.vn/1837043892743049216/1840654271217930240/1827994776956309500/857_0246x0w.webp',
+          },
+        },
+      ];
+      return await messageChannel?.reply({ embed });
+    }
+    if (args[0] === 'check') {
+      const messageChannel = await this.getChannelMessage(message);
+      const username = args[1] ?? message.clan_nick;
+      const findUser = await this.userRepository.findOne({
+        where: { clan_nick: username },
+      });
+      if (!findUser) {
+        return await messageChannel?.reply({ t: 'User not found!' });
+      }
+      const user = await this.getDataBuyUserId(findUser?.user_id);
+      const messageContent = `- Tổng lần nổ hũ: ${user.totalTimes}\n- Tổng lần nổ 777: ${user.jackpotCount}\n- Tổng tiền đã nhận: ${(+user.totalAmount).toLocaleString('vi-VN')}đ\n- Tổng tiền đã chi: ${(+findUser.amountUsedSlots).toLocaleString('vi-VN')}đ\n\n(Tiền đã nhận chưa tính những lần win 10.000đ)`;
+      const embed: EmbedProps[] = [
+        {
+          color: getRandomColor(),
+          title: `${username}'s jackPot information`,
+          description: '```' + messageContent + '```',
+          timestamp: new Date().toISOString(),
+          footer: {
+            text: 'Powered by Mezon',
+            icon_url:
+              'https://cdn.mezon.vn/1837043892743049216/1840654271217930240/1827994776956309500/857_0246x0w.webp',
+          },
+        },
+      ];
+      return await messageChannel?.reply({ embed });
+    }
     this.queue.push(message);
   }
 
@@ -173,7 +331,10 @@ export class SlotsCommand extends CommandMessage {
     await Promise.all([
       this.userRepository.update(
         { user_id: message.sender_id },
-        { amount: newUserAmount },
+        {
+          amount: newUserAmount,
+          amountUsedSlots: +findUser.amountUsedSlots + money,
+        },
       ),
       this.userRepository.update(
         { user_id: process.env.UTILITY_BOT_ID },

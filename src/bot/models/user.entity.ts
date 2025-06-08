@@ -66,6 +66,9 @@ export class User {
   amount: number;
 
   @Column({ type: 'numeric', nullable: true, default: 0 })
+  amountUsedSlots: number;
+
+  @Column({ type: 'numeric', nullable: true, default: 0 })
   jackPot: number;
 
   @Column({ type: 'jsonb', nullable: true, default: {} })
