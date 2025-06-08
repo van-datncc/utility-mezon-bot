@@ -27,12 +27,12 @@ export class UpdateCommand extends CommandMessage {
       if (!findUser || userId === process.env.UTILITY_BOT_ID) {
         return messageChannel?.reply({ t: 'Not found user!' });
       }
-      const userAmount = findUser.amount;
+      const userAmount = +findUser.amount;
       const isNumber = !isNaN(Number(args[2]));
       if (!isNumber) {
         return messageChannel?.reply({ t: 'Amount invalid!' });
       }
-      const amount = userAmount + Number(args[2]);
+      const amount = +userAmount + Number(args[2]);
       await this.userRepository.update({ user_id: userId }, { amount });
       return messageChannel?.reply({
         t: `Cộng ${args[2]} cho user ${userId} thành công!`,
@@ -47,12 +47,12 @@ export class UpdateCommand extends CommandMessage {
       if (!findUser || userId === process.env.UTILITY_BOT_ID) {
         return messageChannel?.reply({ t: 'Not found user!' });
       }
-      const userAmount = findUser.amount;
+      const userAmount = +findUser.amount;
       const isNumber = !isNaN(Number(args[2]));
       if (!isNumber) {
         return messageChannel?.reply({ t: 'Amount invalid!' });
       }
-      const amount = userAmount - Number(args[2]);
+      const amount = +userAmount - Number(args[2]);
       await this.userRepository.update({ user_id: userId }, { amount });
       return messageChannel?.reply({
         t: `Trừ ${args[2]} cho user ${userId} thành công!`,
@@ -67,12 +67,12 @@ export class UpdateCommand extends CommandMessage {
       if (!findUser) {
         return messageChannel?.reply({ t: 'Not found user!' });
       }
-      const jackPot = findUser.jackPot;
+      const jackPot = +findUser.jackPot;
       const isNumber = !isNaN(Number(args[1]));
       if (!isNumber) {
         return messageChannel?.reply({ t: 'Amount invalid!' });
       }
-      const jackPotUp = jackPot + Number(args[1]);
+      const jackPotUp = +jackPot + Number(args[1]);
       await this.userRepository.update(
         { user_id: userId },
         { jackPot: jackPotUp },
@@ -90,12 +90,12 @@ export class UpdateCommand extends CommandMessage {
       if (!findUser) {
         return messageChannel?.reply({ t: 'Not found user!' });
       }
-      const jackPot = findUser.jackPot;
+      const jackPot = +findUser.jackPot;
       const isNumber = !isNaN(Number(args[1]));
       if (!isNumber) {
         return messageChannel?.reply({ t: 'Amount invalid!' });
       }
-      const jackPotUp = jackPot - Number(args[1]);
+      const jackPotUp = +jackPot - Number(args[1]);
       await this.userRepository.update(
         { user_id: userId },
         { jackPot: jackPotUp },
