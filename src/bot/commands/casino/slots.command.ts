@@ -38,6 +38,7 @@ const slotItems = [
 export class SlotsCommand extends CommandMessage {
   private queue: ChannelMessage[] = [];
   private running = false;
+  private UserSlotsMap: Map<string, any> = new Map();
 
   constructor(
     @InjectRepository(User)
@@ -212,6 +213,15 @@ export class SlotsCommand extends CommandMessage {
     this.queue.push(message);
   }
 
+  async setUserSlots(user_id: string, user: any) {
+    if (!this.UserSlotsMap.has(user.user_id)) {
+      this.UserSlotsMap.set(user.user_id, user);
+    }
+  }
+  async getUserSlots(user_id: string) {
+    return this.UserSlotsMap.get(user_id);
+  }
+
   private async startWorker() {
     if (this.running) return;
     this.running = true;
@@ -223,195 +233,217 @@ export class SlotsCommand extends CommandMessage {
   }
 
   private async processSlotMessage(message: ChannelMessage) {
-    const messageChannel = await this.getChannelMessage(message);
-    const money = 5000;
+    try {
+      const messageChannel = await this.getChannelMessage(message);
+      const money = 5000;
 
-    const findUser = await this.userRepository.findOne({
-      where: { user_id: message.sender_id },
-    });
+      const [findUser, botInfo] = await Promise.all([
+        this.userRepository.findOne({
+          where: { user_id: message.sender_id },
+        }),
+        this.userRepository.findOne({
+          where: { user_id: process.env.UTILITY_BOT_ID },
+        }),
+      ]);
 
-    const botInfo = await this.userRepository.findOne({
-      where: { user_id: process.env.UTILITY_BOT_ID },
-    });
+      if (!findUser || !botInfo) {
+        return await messageChannel?.reply({
+          t: EUserError.INVALID_USER,
+          mk: [
+            {
+              type: EMarkdownType.PRE,
+              s: 0,
+              e: EUserError.INVALID_USER.length,
+            },
+          ],
+        });
+      }
 
-    if (!findUser || !botInfo) {
-      return await messageChannel?.reply({
-        t: EUserError.INVALID_USER,
-        mk: [
-          { type: EMarkdownType.PRE, s: 0, e: EUserError.INVALID_USER.length },
-        ],
-      });
-    }
+      await Promise.all([
+        this.setUserSlots(botInfo.user_id!, botInfo),
+        this.setUserSlots(findUser.user_id!, findUser),
+      ]);
 
-    const activeBan = Array.isArray(findUser.ban)
-      ? findUser.ban.find(
-          (ban) =>
-            (ban.type === FuncType.SLOTS || ban.type === FuncType.ALL) &&
-            ban.unBanTime > Math.floor(Date.now() / 1000),
-        )
-      : null;
+      const userSlots = await this.getUserSlots(message.sender_id);
+      const botSlots = await this.getUserSlots(
+        process.env.UTILITY_BOT_ID as string,
+      );
 
-    if (activeBan) {
-      const unbanDate = new Date(activeBan.unBanTime * 1000);
-      const formattedTime = unbanDate.toLocaleString('vi-VN', {
-        timeZone: 'Asia/Ho_Chi_Minh',
-        hour12: false,
-      });
-      const content = activeBan.note;
-      const msgText = `❌ Bạn đang bị cấm thực hiện hành động "slots" đến ${formattedTime}\n   - Lý do: ${content}\n NOTE: Hãy liên hệ admin để mua vé unban`;
-      return await messageChannel?.reply({
-        t: msgText,
-        mk: [{ type: EMarkdownType.PRE, s: 0, e: msgText.length }],
-      });
-    }
+      if (!userSlots || !botSlots) {
+        return await messageChannel?.reply({
+          t: EUserError.INVALID_USER,
+          mk: [
+            {
+              type: EMarkdownType.PRE,
+              s: 0,
+              e: EUserError.INVALID_USER.length,
+            },
+          ],
+        });
+      }
 
-    if ((findUser.amount || 0) < money || isNaN(findUser.amount)) {
-      return await messageChannel?.reply({
-        t: EUserError.INVALID_AMOUNT,
-        mk: [
-          {
-            type: EMarkdownType.PRE,
-            s: 0,
-            e: EUserError.INVALID_AMOUNT.length,
-          },
-        ],
-      });
-    }
+      const activeBan = Array.isArray(userSlots.ban)
+        ? findUser.ban.find(
+            (ban) =>
+              (ban.type === FuncType.SLOTS || ban.type === FuncType.ALL) &&
+              ban.unBanTime > Math.floor(Date.now() / 1000),
+          )
+        : null;
 
-    let win = false;
-    let number = [0, 0, 0];
-    const results: string[][] = [];
-    for (let i = 0; i < 3; i++) {
-      number[i] = Math.floor(Math.random() * slotItems.length);
-      const result = [...slotItems, slotItems[number[i]]];
-      results.push(result);
-    }
+      if (activeBan) {
+        const unbanDate = new Date(activeBan.unBanTime * 1000);
+        const formattedTime = unbanDate.toLocaleString('vi-VN', {
+          timeZone: 'Asia/Ho_Chi_Minh',
+          hour12: false,
+        });
+        const content = activeBan.note;
+        const msgText = `❌ Bạn đang bị cấm thực hiện hành động "slots" đến ${formattedTime}\n   - Lý do: ${content}\n NOTE: Hãy liên hệ admin để mua vé unban`;
+        return await messageChannel?.reply({
+          t: msgText,
+          mk: [{ type: EMarkdownType.PRE, s: 0, e: msgText.length }],
+        });
+      }
 
-    let wonAmount = 0;
-    const betMoney = Math.round(money * 0.9);
-    let isJackPot = false;
-    if (
-      number[0] === number[1] &&
-      number[1] === number[2] &&
-      slotItems[number[0]] === '1.JPG'
-    ) {
-      wonAmount = botInfo.jackPot;
-      isJackPot = true;
-      win = true;
-    } else if (number[0] === number[1] && number[1] === number[2]) {
-      wonAmount = Math.floor(botInfo.jackPot * 0.3);
-      win = true;
-    } else if (new Set(number).size <= 2) {
-      wonAmount = money * 2;
-      if (botInfo.jackPot < betMoney * 2) {
+      if ((userSlots.amount || 0) < money || isNaN(userSlots.amount)) {
+        return await messageChannel?.reply({
+          t: EUserError.INVALID_AMOUNT,
+          mk: [
+            {
+              type: EMarkdownType.PRE,
+              s: 0,
+              e: EUserError.INVALID_AMOUNT.length,
+            },
+          ],
+        });
+      }
+
+      let win = false;
+      const number = [0, 0, 0];
+      const results: string[][] = [];
+      for (let i = 0; i < 3; i++) {
+        number[i] = Math.floor(Math.random() * slotItems.length);
+        const result = [...slotItems, slotItems[number[i]]];
+        results.push(result);
+      }
+
+      let wonAmount = 0;
+      const betMoney = Math.round(money * 0.9);
+      let isJackPot = false;
+
+      if (
+        number[0] === number[1] &&
+        number[1] === number[2] &&
+        slotItems[number[0]] === '1.JPG'
+      ) {
         wonAmount = botInfo.jackPot;
         isJackPot = true;
+        win = true;
+      } else if (number[0] === number[1] && number[1] === number[2]) {
+        wonAmount = Math.floor(botInfo.jackPot * 0.3);
+        win = true;
+      } else if (new Set(number).size <= 2) {
+        wonAmount = money * 2;
+        if (botInfo.jackPot < betMoney * 2) {
+          wonAmount = botInfo.jackPot;
+          isJackPot = true;
+        }
+        win = true;
       }
-      win = true;
-    }
 
-    const userAmount = Number(findUser.amount);
-    const botAmount = Number(botInfo.amount);
-    const botJackPot = Number(botInfo.jackPot);
+      const userAmount = Number(userSlots.amount);
+      const botAmount = Number(botSlots.amount);
+      const botJackPot = Number(botSlots.jackPot);
 
-    const newUserAmount = win ? userAmount + wonAmount : userAmount - money;
-    let newJackPot = win ? botJackPot - wonAmount : botJackPot + betMoney;
-    let newBotAmount = botAmount + (money - betMoney);
+      const newUserAmount = win ? userAmount + wonAmount : userAmount - money;
+      let newJackPot = win ? botJackPot - wonAmount : botJackPot + betMoney;
+      let newBotAmount = botAmount + (money - betMoney);
 
-    if (isJackPot) {
-      if (newBotAmount > 500000) {
-        newJackPot = 500000;
-        newBotAmount -= 500000;
-      } else {
-        newJackPot = newBotAmount;
-        newBotAmount = 0;
+      if (isJackPot) {
+        if (newBotAmount > 500000) {
+          newJackPot = 500000;
+          newBotAmount -= 500000;
+        } else {
+          newJackPot = newBotAmount;
+          newBotAmount = 0;
+        }
       }
-    }
 
-    await Promise.all([
-      this.userRepository.update(
-        { user_id: message.sender_id },
-        {
-          amount: newUserAmount,
-          amountUsedSlots: +findUser.amountUsedSlots + money,
-        },
-      ),
-      this.userRepository.update(
-        { user_id: process.env.UTILITY_BOT_ID },
-        { amount: newBotAmount, jackPot: newJackPot },
-      ),
-    ]);
+      const updatedUserSlots = { ...userSlots, amount: newUserAmount };
+      const updatedBotSlots = {
+        ...botSlots,
+        amount: newBotAmount,
+        jackPot: newJackPot,
+      };
 
-    if (win && wonAmount !== 10000) {
-      await this.jackPotTransaction.insert({
-        user_id: message.sender_id,
-        amount: wonAmount,
-        type: isJackPot ? JackpotType.JACKPOT : JackpotType.WIN,
-        createAt: Date.now(),
-        clan_id: message.clan_id,
-        channel_id: message.channel_id,
-      });
-      const clan = this.client.clans.get('0');
-      const user = await clan?.users.fetch('1827994776956309504');
-      await user?.sendDM({
-        t: `${message.sender_id} vửa nổ jackpot ${isJackPot ? '777' : ''} ${wonAmount}đ`,
-      });
-    }
+      await Promise.all([
+        this.UserSlotsMap.set(userSlots.user_id, updatedUserSlots),
+        this.UserSlotsMap.set(
+          process.env.UTILITY_BOT_ID as string,
+          updatedBotSlots,
+        ),
+      ]);
 
-    const resultEmbed = {
-      color: getRandomColor(),
-      title: '🎰 Kết quả Slots 🎰',
-      fields: [
-        {
-          name: '',
-          value: '',
-          inputs: {
-            id: `slots`,
-            type: EMessageComponentType.ANIMATION,
-            component: {
-              url_image:
-                'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420411527_0spritesheet.png',
-              url_position:
-                'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420408191_0spritesheet.json',
-              jackpot: botInfo.jackPot,
-              pool: results,
-              repeat: 6,
-              duration: 0.5,
-            },
-          },
-        },
-      ],
-    };
+      setTimeout(async () => {
+        try {
+          const values = Array.from(this.UserSlotsMap.values());
+          if (values.length === 0) return;
 
-    const messBot = await messageChannel?.reply({ embed: [resultEmbed] });
-    if (!messBot) return;
+          const updates = values.map(async (value) => {
+            try {
+              if (value.user_id === process.env.UTILITY_BOT_ID) {
+                await this.userRepository.update(
+                  { user_id: value.user_id },
+                  {
+                    amount: value.amount,
+                    jackPot: value.jackPot,
+                  },
+                );
+              } else {
+                await this.userRepository.update(
+                  { user_id: value.user_id },
+                  {
+                    amount: value.amount,
+                    amountUsedSlots: +value.amountUsedSlots + money,
+                  },
+                );
+              }
+            } catch (err) {
+              console.error(`Error updating user ${value.user_id}:`, err);
+            } finally {
+              this.UserSlotsMap.delete(value.user_id);
+            }
+          });
 
-    const msg: ChannelMessage = {
-      mode: messBot.mode,
-      message_id: messBot.message_id,
-      code: messBot.code,
-      create_time: messBot.create_time,
-      update_time: messBot.update_time,
-      id: messBot.message_id,
-      clan_id: message.clan_id,
-      channel_id: message.channel_id,
-      persistent: messBot.persistence,
-      channel_label: message.channel_label,
-      content: {},
-      sender_id: process.env.UTILITY_BOT_ID as string,
-    };
-    const messageBot = await this.getChannelMessage(msg);
+          await Promise.all(updates);
+        } catch (err) {
+          console.error('Error in database update timeout:', err);
+        }
+      }, 1000);
 
-    setTimeout(() => {
-      const msgResults = {
+      if (win && wonAmount !== 10000) {
+        try {
+          await this.jackPotTransaction.insert({
+            user_id: message.sender_id,
+            amount: wonAmount,
+            type: isJackPot ? JackpotType.JACKPOT : JackpotType.WIN,
+            createAt: Date.now(),
+            clan_id: message.clan_id,
+            channel_id: message.channel_id,
+          });
+
+          const clan = this.client.clans.get('0');
+          const user = await clan?.users.fetch('1827994776956309504');
+          await user?.sendDM({
+            t: `${message.sender_id} vừa nổ jackpot ${isJackPot ? '777' : ''} ${wonAmount}đ`,
+          });
+        } catch (err) {
+          console.error('Error recording jackpot transaction:', err);
+        }
+      }
+
+      const resultEmbed = {
         color: getRandomColor(),
         title: '🎰 Kết quả Slots 🎰',
-        description: `
-            Jackpot: ${Math.floor(botInfo.jackPot)}
-            Bạn đã cược: ${money}
-            Bạn ${win ? 'thắng' : 'thua'}: ${win ? wonAmount : money}
-            Jackpot mới: ${newJackPot}
-            `,
         fields: [
           {
             name: '',
@@ -424,17 +456,80 @@ export class SlotsCommand extends CommandMessage {
                   'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420411527_0spritesheet.png',
                 url_position:
                   'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420408191_0spritesheet.json',
-                jackpot: Math.floor(botInfo.jackPot),
+                jackpot: botInfo.jackPot,
                 pool: results,
                 repeat: 6,
                 duration: 0.5,
-                isResult: 1,
               },
             },
           },
         ],
       };
-      messageBot?.update({ embed: [msgResults] });
-    }, 4000);
+
+      const messBot = await messageChannel?.reply({ embed: [resultEmbed] });
+      if (!messBot) return;
+
+      const msg: ChannelMessage = {
+        mode: messBot.mode,
+        message_id: messBot.message_id,
+        code: messBot.code,
+        create_time: messBot.create_time,
+        update_time: messBot.update_time,
+        id: messBot.message_id,
+        clan_id: message.clan_id,
+        channel_id: message.channel_id,
+        persistent: messBot.persistence,
+        channel_label: message.channel_label,
+        content: {},
+        sender_id: process.env.UTILITY_BOT_ID as string,
+      };
+      const messageBot = await this.getChannelMessage(msg);
+
+      setTimeout(() => {
+        try {
+          const msgResults = {
+            color: getRandomColor(),
+            title: '🎰 Kết quả Slots 🎰',
+            description: `
+                Jackpot: ${Math.floor(botSlots.jackPot)}
+                Bạn đã cược: ${money}
+                Bạn ${win ? 'thắng' : 'thua'}: ${win ? wonAmount : money}
+                Jackpot mới: ${newJackPot}
+                `,
+            fields: [
+              {
+                name: '',
+                value: '',
+                inputs: {
+                  id: `slots`,
+                  type: EMessageComponentType.ANIMATION,
+                  component: {
+                    url_image:
+                      'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420411527_0spritesheet.png',
+                    url_position:
+                      'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420408191_0spritesheet.json',
+                    jackpot: Math.floor(botSlots.jackPot),
+                    pool: results,
+                    repeat: 6,
+                    duration: 0.5,
+                    isResult: 1,
+                  },
+                },
+              },
+            ],
+          };
+          messageBot?.update({ embed: [msgResults] });
+        } catch (err) {
+          console.error('Error updating result message:', err);
+        }
+      }, 4000);
+    } catch (err) {
+      console.error('Error in processSlotMessage:', err);
+      const messageChannel = await this.getChannelMessage(message);
+      await messageChannel?.reply({
+        t: 'Đã xảy ra lỗi khi xử lý slots. Vui lòng thử lại sau.',
+        mk: [{ type: EMarkdownType.PRE, s: 0, e: 50 }],
+      });
+    }
   }
 }
