@@ -30,6 +30,7 @@ export class LixiService {
     new Map();
   private lixiTimeouts: Map<string, Map<number, NodeJS.Timeout>> = new Map();
   private lixiCanceled: Map<string, boolean> = new Map();
+  private lixiReceivers: Map<string, LixiDetail[]> = new Map();
 
   constructor(
     @InjectRepository(MezonBotMessage)
@@ -157,7 +158,7 @@ export class LixiService {
       diff -= 10000;
     }
     const resultEmbed = {
-      color: getRandomColor(),
+      color: color,
       title: `[Lixi] ${description}`,
       description: `Tổng: ${totalAmountValue.toLocaleString()}đ
           Số lượng lixi: 0/${numLixiValue}
@@ -216,6 +217,10 @@ export class LixiService {
       embed: [resultEmbed],
       components,
     });
+
+    const key = `${data.message_id}-${data.channel_id}`;
+    this.lixiReceivers.set(key, []);
+
     await this.mezonBotMessageRepository.update(
       {
         messageId: data.message_id,
@@ -231,31 +236,6 @@ export class LixiService {
   getClickedUsers(key: string): string[] {
     const users = this.listUserClickLixi.get(key);
     return users ? Array.from(users) : [];
-  }
-
-  async splitRandomLixiToUsersKeepRemainder(
-    userIds: string[],
-    numLixi: number,
-    totalAmount: number,
-    minPerPerson: number,
-  ): Promise<{
-    results: { user_id: string; amount: number }[];
-    leftover: number;
-  }> {
-    const actualNumLixi = Math.min(numLixi, userIds.length);
-    const minTotal = actualNumLixi * minPerPerson;
-    const selected = [...userIds]
-      .sort(() => Math.random() - 0.5)
-      .slice(0, actualNumLixi);
-
-    const results = selected.map((user_id) => ({
-      user_id,
-      amount: minPerPerson,
-    }));
-
-    const leftover = totalAmount - minTotal;
-
-    return { results, leftover };
   }
 
   async handleSelectLixi(data: any) {
@@ -419,6 +399,8 @@ export class LixiService {
     if (amounts.length === 0) return;
     if (details.some((d) => d.user_id === data.user_id)) return;
 
+    if (details.length >= numLixi) return;
+
     if (!this.lixiClickBuckets.has(key)) {
       this.lixiClickBuckets.set(key, new Map());
     }
@@ -430,7 +412,7 @@ export class LixiService {
     if (hasClicked) return;
 
     const now = Math.floor(Date.now() / 1000);
-    const batchWindow = 1;
+    const batchWindow = 2;
     const batchTimestamp = Math.floor(now / batchWindow) * batchWindow;
 
     if (!bucket.has(batchTimestamp)) {
@@ -471,7 +453,7 @@ export class LixiService {
             authorName,
             minPerPerson,
           ),
-        500,
+        1000,
       );
 
       timeoutMap.set(batchTimestamp, timeout);
@@ -501,6 +483,22 @@ export class LixiService {
       return;
     }
 
+    const latestMessageData = await this.mezonBotMessageRepository.findOne({
+      where: {
+        messageId: data.message_id,
+        channelId: data.channel_id,
+      },
+    });
+
+    if (!latestMessageData || !latestMessageData.lixiResult) return;
+
+    const [latestAmounts, _, latestDetails] = latestMessageData.lixiResult;
+
+    if (latestDetails.length >= numLixi || latestAmounts.length === 0) {
+      this.cleanupLixi(key);
+      return;
+    }
+
     try {
       const bucket = this.lixiClickBuckets.get(key);
       if (!bucket) return;
@@ -511,15 +509,25 @@ export class LixiService {
       const uniqueUsers = bucketAtTime.users.filter(
         (u, index, self) =>
           self.findIndex((u2) => u2.user_id === u.user_id) === index &&
-          !details.some((d) => d.user_id === u.user_id),
+          !latestDetails.some((d) => d.user_id === u.user_id),
       );
 
       if (!uniqueUsers.length) return;
 
-      const eligibleUsers = this.getRandomUsers(
-        uniqueUsers,
-        Math.min(uniqueUsers.length, amounts.length),
+      const remainingSlots = numLixi - latestDetails.length;
+
+      const maxEligibleUsers = Math.min(
+        uniqueUsers.length,
+        latestAmounts.length,
+        remainingSlots,
       );
+
+      if (maxEligibleUsers <= 0) {
+        this.cleanupLixi(key);
+        return;
+      }
+
+      const eligibleUsers = this.getRandomUsers(uniqueUsers, maxEligibleUsers);
 
       if (!eligibleUsers.length) return;
 
@@ -532,9 +540,15 @@ export class LixiService {
       const userMap = new Map(users.map((u) => [u.user_id, u]));
 
       let chosenLixiAmount = 0;
-      const newDetails = [...details];
-      const amountsToUpdate = [...amounts];
+      const newDetails = [...latestDetails];
+
+      const amountsToUpdate = [...latestAmounts];
       const updatedUsers: User[] = [];
+
+      if (!this.lixiReceivers.has(key)) {
+        this.lixiReceivers.set(key, []);
+      }
+      const currentReceivers = this.lixiReceivers.get(key) || [];
 
       for (const u of eligibleUsers) {
         if (amountsToUpdate.length === 0) break;
@@ -543,19 +557,29 @@ export class LixiService {
         if (!user) continue;
 
         const chosenAmount = amountsToUpdate.shift() || minPerPerson;
+
         const currentAmount = Number(user.amount);
 
         if (isNaN(currentAmount) || isNaN(chosenAmount)) continue;
 
-        newDetails.push({
+        const lixiDetail: LixiDetail = {
           user_id: u.user_id,
           username: user.username,
           amount: chosenAmount,
-        });
+        };
+
+        newDetails.push(lixiDetail);
+        currentReceivers.push(lixiDetail);
 
         user.amount = currentAmount + chosenAmount;
         chosenLixiAmount += chosenAmount;
         updatedUsers.push(user);
+      }
+
+      this.lixiReceivers.set(key, currentReceivers);
+
+      if (newDetails.length > numLixi) {
+        newDetails.splice(numLixi);
       }
 
       await this.userRepository.manager.transaction(
@@ -589,21 +613,22 @@ export class LixiService {
         const message = await channel.messages.fetch(data.message_id);
         if (!message) return;
 
-        const receiverList = newDetails
+        const receivers = newDetails;
+        const receiverList = receivers
           .map((d) => `- ${d.username}: ${d.amount.toLocaleString()}đ`)
           .join('\n');
 
         const resultEmbed = {
-          color: getRandomColor(),
+          color: color,
           title: `[Lì xì] ${description || ''}`,
           description: `Tổng: ${totalAmount.toLocaleString()}đ
-            Số lượng lì xì: ${numLixi - amountsToUpdate.length}/${numLixi}
+            Số lượng lì xì: ${receivers.length}/${numLixi}
             Người nhận: 
             ${receiverList}
             `,
         };
 
-        if (amountsToUpdate.length === 0) {
+        if (amountsToUpdate.length === 0 || receivers.length >= numLixi) {
           await message.update({ embed: [resultEmbed] });
           this.cleanupLixi(key);
         } else {
@@ -657,6 +682,7 @@ export class LixiService {
       this.lixiTimeouts.delete(key);
     }
     this.lixiCanceled.delete(key);
+    this.lixiReceivers.delete(key);
   }
 
   private getRandomUsers(users: any[], count: number): any[] {
