@@ -313,7 +313,7 @@ export class SlotsCommand extends CommandMessage {
       wonAmount = Math.floor(botInfo.jackPot * 0.3);
       win = true;
     } else if (new Set(number).size <= 2) {
-      wonAmount = betMoney * 2;
+      wonAmount = money * 2;
       if (botInfo.jackPot < betMoney * 2) {
         wonAmount = botInfo.jackPot;
         isJackPot = true;
@@ -325,7 +325,9 @@ export class SlotsCommand extends CommandMessage {
     const botJackPot = Number(botInfo.jackPot);
 
     const newUserAmount = win ? userAmount + wonAmount : userAmount - money;
-    let newJackPot = win ? botJackPot - wonAmount : botJackPot + betMoney;
+    let newJackPot = win
+      ? botJackPot - wonAmount - Math.round(money * 0.1)
+      : botJackPot + betMoney;
 
     await Promise.all([
       this.userRepository.update(
@@ -341,7 +343,7 @@ export class SlotsCommand extends CommandMessage {
       ),
     ]);
 
-    if (win && wonAmount !== 9000) {
+    if (win && wonAmount !== money * 2) {
       await this.jackPotTransaction.insert({
         user_id: message.sender_id,
         amount: wonAmount,
