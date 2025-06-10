@@ -28,6 +28,9 @@ export class WithdrawTokenCommand extends CommandMessage {
     const findUser = await this.userRepository.findOne({
       where: { user_id: message.sender_id },
     });
+    const findBot = await this.userRepository.findOne({
+      where: { user_id: process.env.UTILITY_BOT_ID },
+    });
 
     if (!findUser) {
       return await messageChannel?.reply({
@@ -102,6 +105,7 @@ export class WithdrawTokenCommand extends CommandMessage {
     await this.dataSource
       .transaction(async (manager) => {
         const userRepo = manager.getRepository(User);
+
         const findUser = await userRepo.findOne({
           where: { user_id: message.sender_id },
         });
@@ -114,14 +118,21 @@ export class WithdrawTokenCommand extends CommandMessage {
           throw new Error(EUserError.INVALID_AMOUNT);
         }
 
-        findUser.amount = (findUser.amount || 0) - money;
+        findUser.amount = (+findUser.amount || 0) - +money;
         await userRepo.save(findUser);
+        if (findBot) {
+          const newBotAmount = (+findBot.amount || 0) - +money;
+          await this.userRepository.update(
+            { user_id: process.env.UTILITY_BOT_ID },
+            { amount: newBotAmount },
+          );
+        }
 
         const dataSendToken = {
           sender_id: process.env.UTILITY_BOT_ID,
           sender_name: process.env.BOT_KOMU_NAME,
           receiver_id: message.sender_id,
-          amount: money,
+          amount: +money,
         };
         await this.client.sendToken(dataSendToken);
 
