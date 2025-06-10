@@ -63,7 +63,7 @@ export class SlotsCommand extends CommandMessage {
         const date = new Date(+r.createAt);
         return {
           user_id: r.user_id,
-          username: findUser?.clan_nick || findUser?.username || '',
+          username: findUser?.username || '',
           amount: r.amount,
           type: r.type,
           time: date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
@@ -113,7 +113,7 @@ export class SlotsCommand extends CommandMessage {
         });
         return {
           user_id: r.user_id,
-          username: findUser?.clan_nick || findUser?.username || '',
+          username: findUser?.username || '',
           totalAmount: parseFloat(r.totalamount),
           totalTimes: parseInt(r.totalTimes, 10),
           totalUsed: +(findUser?.amountUsedSlots ?? 0),
@@ -185,10 +185,16 @@ export class SlotsCommand extends CommandMessage {
     }
     if (args[0] === 'check') {
       const messageChannel = await this.getChannelMessage(message);
-      const username = args[1] ?? message.clan_nick;
-      const findUser = await this.userRepository.findOne({
+      const username = args[1] ?? message.username;
+      let findUser = await this.userRepository.findOne({
         where: { clan_nick: username },
       });
+
+      if (!findUser) {
+        findUser = await this.userRepository.findOne({
+          where: { username: username },
+        });
+      }
       if (!findUser) {
         return await messageChannel?.reply({ t: 'User not found!' });
       }
@@ -219,20 +225,25 @@ export class SlotsCommand extends CommandMessage {
       if (this.queue.length === 0) return;
       const msg = this.queue.shift();
       if (msg) await this.processSlotMessage(msg);
-    }, 15);
+    }, 20);
   }
 
   private async processSlotMessage(message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
     const money = 5000;
 
-    const findUser = await this.userRepository.findOne({
-      where: { user_id: message.sender_id },
+    const users = await this.userRepository.find({
+      where: [
+        { user_id: message.sender_id },
+        { user_id: process.env.UTILITY_BOT_ID },
+      ],
     });
 
-    const botInfo = await this.userRepository.findOne({
-      where: { user_id: process.env.UTILITY_BOT_ID },
-    });
+    const findUser = users.find((user) => user.user_id === message.sender_id);
+
+    const botInfo = users.find(
+      (user) => user.user_id === process.env.UTILITY_BOT_ID,
+    );
 
     if (!findUser || !botInfo) {
       return await messageChannel?.reply({
@@ -295,7 +306,7 @@ export class SlotsCommand extends CommandMessage {
       number[1] === number[2] &&
       slotItems[number[0]] === '1.JPG'
     ) {
-      wonAmount = botInfo.jackPot;
+      wonAmount = Math.floor(botInfo.jackPot * 0.8);
       isJackPot = true;
       win = true;
     } else if (number[0] === number[1] && number[1] === number[2]) {
@@ -311,38 +322,28 @@ export class SlotsCommand extends CommandMessage {
     }
 
     const userAmount = Number(findUser.amount);
-    const botAmount = Number(botInfo.amount);
     const botJackPot = Number(botInfo.jackPot);
 
     const newUserAmount = win ? userAmount + wonAmount : userAmount - money;
-    let newJackPot = win ? botJackPot - wonAmount : botJackPot + betMoney;
-    let newBotAmount = botAmount + (money - betMoney);
-
-    if (isJackPot) {
-      if (newBotAmount > 500000) {
-        newJackPot = 500000;
-        newBotAmount -= 500000;
-      } else {
-        newJackPot = newBotAmount;
-        newBotAmount = 0;
-      }
-    }
+    let newJackPot = win
+      ? botJackPot - wonAmount - Math.round(money * 0.1)
+      : botJackPot + betMoney;
 
     await Promise.all([
       this.userRepository.update(
         { user_id: message.sender_id },
         {
           amount: newUserAmount,
-          amountUsedSlots: +findUser.amountUsedSlots + money,
+          amountUsedSlots: +findUser.amountUsedSlots + (win ? 0 : +money),
         },
       ),
       this.userRepository.update(
         { user_id: process.env.UTILITY_BOT_ID },
-        { amount: newBotAmount, jackPot: newJackPot },
+        { jackPot: newJackPot },
       ),
     ]);
 
-    if (win && wonAmount !== 10000) {
+    if (win && wonAmount !== money * 2) {
       await this.jackPotTransaction.insert({
         user_id: message.sender_id,
         amount: wonAmount,

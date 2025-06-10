@@ -115,9 +115,9 @@ export class BuyService {
           buyerId: option.buyerId,
           buyerName: option.buyerName,
         }),
-        description: `Amount: ${option?.amount ? `${option?.amount.toLocaleString()}đ` : '0'} \n By: ${option.buyerName} ${option.amountLock.username ? '\n Đang được giao dịch' : ''}`,
+        description: `Amount: ${option?.amount ? `${option?.amount.toLocaleString()}đ` : '0'} \n By: ${option.buyerName} ${option?.amountLock?.username ? '\n Đang được giao dịch' : ''}`,
         style: EButtonMessageStyle.SUCCESS,
-        disabled: option.amountLock.username ? true : false,
+        disabled: option?.amountLock?.username ? true : false,
       };
     });
     return embedCompoents;
