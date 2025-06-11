@@ -12,7 +12,6 @@ import { User } from 'src/bot/models/user.entity';
 import { EmbebButtonType, FuncType } from 'src/bot/constants/configs';
 import { MezonBotMessage } from 'src/bot/models/mezonBotMessage.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
-import { getRandomColor } from 'src/bot/utils/helps';
 import { EUserError } from '../constants/error';
 import { In } from 'typeorm';
 
@@ -110,17 +109,17 @@ export class LixiService {
       isNaN(minLixiValue) ||
       minLixiValue % 10000 !== 0 ||
       isNaN(numLixiValue) ||
-      numLixiValue <= 0 ||
-      minLixiValue < 0 ||
-      totalAmountValue < 0
+      numLixiValue < 1 ||
+      minLixiValue <= 0 ||
+      totalAmountValue <= 0
     ) {
       const content = `[Lixi]
-      - [totalAmount]: Tổng số tiền lixi
-      - [minLixi]: giá trị nhỏ nhất của lixi
-      - [numLixi]: số lượng lixi
+      - [totalAmount]: Tổng số tiền lixi 
+      - [minLixi]: giá trị nhỏ nhất của lixi 
+      - [numLixi]: số lượng lixi 
       Note: 
-        [totalAmount] và [minLixi] phải bội số của 10000
-        [numLixi] phải là số nguyên dương
+        [totalAmount] và [minLixi] phải bội số của 10000  
+        [numLixi] phải là số nguyên dương và > 0
         Lixi sẽ chia đều khi [totalAmount] = [minLixi] * [numLixi]`;
 
       return await messsage.update({
@@ -142,7 +141,7 @@ export class LixiService {
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: content.length,
           },
