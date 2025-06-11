@@ -141,7 +141,7 @@ export class LixiService {
         t: content,
         mk: [
           {
-            type: EMarkdownType.TRIPLE,
+            type: EMarkdownType.PRE,
             s: 0,
             e: content.length,
           },
