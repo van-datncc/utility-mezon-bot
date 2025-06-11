@@ -28,7 +28,7 @@ export class LixiCommand extends CommandMessage {
     super(clientService);
   }
 
-  async execute(args: string[], message: ChannelMessage) {
+  async execute1(args: string[], message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
     const msgText = `❌ Command Lixi hiện đang bảo trì!`;
     return await messageChannel?.reply({
@@ -43,7 +43,10 @@ export class LixiCommand extends CommandMessage {
     });
   }
 
-  async execute333(args: string[], message: ChannelMessage) {
+  async execute(args: string[], message: ChannelMessage) {
+    if (message.channel_id !== '1840686304438784000') {
+      return;
+    }
     const messageChannel = await this.getChannelMessage(message);
     if (message.username === 'Anonymous') {
       const content = `[Lixi] Anonymous can't use this command!`;
