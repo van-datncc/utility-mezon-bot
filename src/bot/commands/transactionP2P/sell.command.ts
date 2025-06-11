@@ -131,6 +131,7 @@ export class SellCommand extends CommandMessage {
               },
             },
           },
+
           {
             name: 'TotalAmount:',
             value: '',
@@ -142,6 +143,34 @@ export class SellCommand extends CommandMessage {
                 required: true,
                 defaultValue: 10000,
                 type: 'number',
+              },
+            },
+          },
+          {
+            name: 'TKNH:',
+            value: '',
+            inputs: {
+              id: `sell-${messageid}-tknh-ip`,
+              type: EMessageComponentType.INPUT,
+              component: {
+                id: `sell-${messageid}-totalAmount-plhder`,
+                required: true,
+                defaultValue: 'Nhap tai khoan ngan hang',
+                type: 'text',
+              },
+            },
+          },
+          {
+            name: 'STK:',
+            value: '',
+            inputs: {
+              id: `sell-${messageid}-stk-ip`,
+              type: EMessageComponentType.INPUT,
+              component: {
+                id: `sell-${messageid}-stk-plhder`,
+                required: true,
+                defaultValue: 'Nhap so tai khoan',
+                type: 'text',
               },
             },
           },

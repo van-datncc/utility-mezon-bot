@@ -218,6 +218,7 @@ export class SellService {
         if (data.user_id !== authId) {
           return;
         }
+
         let parsedExtraData;
         try {
           parsedExtraData = JSON.parse(data.extra_data);
@@ -226,16 +227,29 @@ export class SellService {
         }
         const description = `sell-${msgId}-description-ip`;
         const totalAmount = `sell-${msgId}-totalAmount-ip`;
+        const tknh = `sell-${msgId}-tknh-ip`;
+        const stk = `sell-${msgId}-stk-ip`;
         const descriptionValue = parsedExtraData[description] || '';
         const totalAmountValue = Number(parsedExtraData[totalAmount]);
+        const tknhValue = parsedExtraData[tknh];
+        const stkValue = Number(parsedExtraData[stk]);
+
+        console.log(tknhValue, stkValue);
+
+        console.log(!Number.isInteger(stkValue));
 
         if (
           isNaN(totalAmountValue) ||
           !Number.isInteger(totalAmountValue) ||
+          !tknhValue ||
+          !Number.isInteger(stkValue) ||
+          !tknh ||
           totalAmountValue <= 0
         ) {
           const content = `[Sell]
-        - [totalAmount]: Tổng số tiền sell phải là số tự nhiên lớn hơn 0`;
+        - [totalAmount]: Tổng số tiền sell phải là số tự nhiên lớn hơn 0
+        - [tknh]: phải có tknh
+        - [stk]: phải có stk `;
 
           return await messsage.update({
             t: content,
@@ -279,6 +293,8 @@ export class SellService {
           sellerName: findUser.username,
           note: descriptionValue,
           amount: totalAmountValue,
+          tknh: tknhValue,
+          stk: stkValue.toString(),
           amountLock: {
             username: findUser.username,
             amount: totalAmountValue,
@@ -365,6 +381,8 @@ export class SellService {
           const transaction = await this.transactionP2PRepository.findOne({
             where: { id: sellOrder.id || '', deleted: false },
           });
+
+          console.log(transaction);
           if (!transaction) {
             return;
           }
