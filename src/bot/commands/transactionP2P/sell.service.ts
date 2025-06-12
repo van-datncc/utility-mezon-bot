@@ -237,11 +237,7 @@ export class SellService {
         const totalAmountValue = Number(parsedExtraData[totalAmount]);
         const stkValue = Number(parsedExtraData[stk]);
 
-        console.log('data', parsedExtraData[tknh]);
-
         const labelBank = bankOptions[parsedExtraData[tknh]].label;
-
-        console.log('labelBank', labelBank);
 
         if (
           isNaN(totalAmountValue) ||
@@ -611,52 +607,6 @@ export class SellService {
         await this.transactionP2PRepository.save(transaction);
         return;
       }
-
-      // if (typeButtonRes === EmbebButtonType.CONFIRM) {
-      //   const transaction = await this.transactionP2PRepository.findOne({
-      //     where: { id: transacionId || '', deleted: false },
-      //   });
-      //   if (!transaction) {
-      //     return;
-      //   }
-
-      //   transaction.buyerId = '';
-      //   transaction.buyerName = '';
-      //   transaction.status = true;
-      //   await this.transactionP2PRepository.save(transaction);
-
-      //   const embedsell = [
-      //     {
-      //       color,
-      //       title: `[Sell]`,
-      //       description: `Bạn đã xác nhận yêu cầu hủy giao dịch mã: SELL${transacionId}`,
-      //       timestamp: new Date().toISOString(),
-      //       footer: MEZON_EMBED_FOOTER,
-      //     },
-      //   ];
-      //   await buyer.sendDM({ embed: embedsell });
-
-      //   const embedSell = [
-      //     {
-      //       color,
-      //       title: `[Sell]`,
-      //       description: `${findUser.username} đã xác nhận yêu cầu hủy giao dịch mã: SELL${transacionId}`,
-      //       timestamp: new Date().toISOString(),
-      //       footer: MEZON_EMBED_FOOTER,
-      //     },
-      //   ];
-      //   await seller.sendDM({ embed: embedSell });
-
-      //   if (transaction?.message.length > 0) {
-      //     for (const message of transaction?.message) {
-      //       const channel = await this.client.channels.fetch(
-      //         message.channel_id,
-      //       );
-      //       const msg = await channel?.messages.fetch(message.id);
-      //       msg?.update({ embed: message.content });
-      //     }
-      //   }
-      // }
 
       if (typeButtonRes === EmbebButtonType.REPORT) {
         const transaction = await this.transactionP2PRepository.findOne({

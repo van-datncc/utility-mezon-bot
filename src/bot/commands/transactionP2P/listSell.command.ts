@@ -63,6 +63,7 @@ export class ListSellCommand extends CommandMessage {
         clanId: message.clan_id || '',
         sellerId: Not(IsNull()),
         status: false,
+        deleted: false,
       },
     });
 

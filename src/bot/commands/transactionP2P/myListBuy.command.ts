@@ -64,8 +64,6 @@ export class MyBuyCommand extends CommandMessage {
       where: {
         clanId: message.clan_id || '',
         buyerId: message.sender_id,
-        status: true,
-        sellerId: IsNull(),
       },
     });
 
