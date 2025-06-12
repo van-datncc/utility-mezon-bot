@@ -19,6 +19,7 @@ import { MezonBotMessage } from 'src/bot/models/mezonBotMessage.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { getRandomColor } from 'src/bot/utils/helps';
 import { TransactionP2P } from 'src/bot/models/transactionP2P.entity';
+import { bankOptions } from 'src/bot/constants/options';
 // import { EUserError } from '../constants/error';
 
 @Injectable()
@@ -114,8 +115,11 @@ export class SellService {
           amount: option.amount,
           sellerId: option.sellerId,
           sellerName: option.sellerName,
+          tknh: option.tknh,
+          stk: option.stk,
+          status: option.status,
         }),
-        description: `Amount: ${option?.amount ? `${option?.amount.toLocaleString()}đ` : '0'} \n By: ${option.amountLock.username} ${option.buyerId ? '\n Đang được giao dịch' : ''}`,
+        description: `Amount: ${option?.amount ? `${option?.amount.toLocaleString()}đ` : '0'} \n By: ${option.amountLock.username}  ${option.status ? `\nTKNH: ${option.tknh}\nSTK: ${option.stk}\nĐang được giao dịch` : ''}`,
         style: EButtonMessageStyle.SUCCESS,
         disabled: option.buyerId ? true : false,
       };
@@ -231,17 +235,18 @@ export class SellService {
         const stk = `sell-${msgId}-stk-ip`;
         const descriptionValue = parsedExtraData[description] || '';
         const totalAmountValue = Number(parsedExtraData[totalAmount]);
-        const tknhValue = parsedExtraData[tknh];
         const stkValue = Number(parsedExtraData[stk]);
 
-        console.log(tknhValue, stkValue);
+        console.log('data', parsedExtraData[tknh]);
 
-        console.log(!Number.isInteger(stkValue));
+        const labelBank = bankOptions[parsedExtraData[tknh]].label;
+
+        console.log('labelBank', labelBank);
 
         if (
           isNaN(totalAmountValue) ||
           !Number.isInteger(totalAmountValue) ||
-          !tknhValue ||
+          !labelBank ||
           !Number.isInteger(stkValue) ||
           !tknh ||
           totalAmountValue <= 0
@@ -293,7 +298,7 @@ export class SellService {
           sellerName: findUser.username,
           note: descriptionValue,
           amount: totalAmountValue,
-          tknh: tknhValue,
+          tknh: labelBank,
           stk: stkValue.toString(),
           amountLock: {
             username: findUser.username,
@@ -367,9 +372,11 @@ export class SellService {
 
       if (typeButtonRes === EmbebButtonType.BUY) {
         const rawOrderList = JSON.parse(data.extra_data);
+
         const parsedOrders = rawOrderList.MySellOrder.map((item) =>
           JSON.parse(item),
         );
+
         for (const sellOrder of parsedOrders) {
           if (data.user_id === sellOrder.sellerId) {
             return;
@@ -379,10 +386,9 @@ export class SellService {
             return;
           }
           const transaction = await this.transactionP2PRepository.findOne({
-            where: { id: sellOrder.id || '', deleted: false },
+            where: { id: sellOrder.id || '', deleted: false, status: false },
           });
 
-          console.log(transaction);
           if (!transaction) {
             return;
           }
@@ -392,6 +398,7 @@ export class SellService {
 
           transaction.buyerId = findUser.user_id;
           transaction.buyerName = findUser.username;
+          transaction.status = true;
           await this.transactionP2PRepository.save(transaction);
           const transactions = await this.transactionP2PRepository.find({
             where: {
@@ -418,6 +425,8 @@ export class SellService {
             type: 'Buy',
           });
           await messsage.update({ embed, components });
+
+          console.log('seller', seller);
           const embedSell = [
             {
               color,
@@ -432,7 +441,7 @@ export class SellService {
           const embedBuy = [
             {
               color,
-              title: `[Sell]`,
+              title: `[Buy]`,
               description: `${findUser.username} đã yêu cầu giao dịch mã: SELL${sellOrder.id}, hãy liên hệ với họ`,
               timestamp: new Date().toISOString(),
               footer: MEZON_EMBED_FOOTER,
@@ -479,11 +488,12 @@ export class SellService {
 
           transaction.message = [
             ...(transaction.message || []),
+
             {
               id: messBuy.message_id,
               clan_id: '0',
               channel_id: messBuy.channel_id,
-              content: embedSell,
+              content: embedBuy,
             },
           ];
           await this.transactionP2PRepository.save(transaction);
@@ -524,11 +534,29 @@ export class SellService {
         if (!transaction) {
           return;
         }
-        const embedsell = [
+
+        const messageIdSell = transaction.message[0].id;
+        const channel = await this.client.channels.fetch(
+          transaction.message[0].channel_id,
+        );
+
+        const embedSell = [
+          {
+            color,
+            title: `[Cancel transaction]`,
+            description: `Bạn đã yêu cầu hủy giao dịch mã: SELL${transacionId}`,
+            timestamp: new Date().toISOString(),
+            footer: MEZON_EMBED_FOOTER,
+          },
+        ];
+        const msg = await channel?.messages.fetch(messageIdSell);
+        msg?.update({ embed: embedSell });
+
+        const embedBuy = [
           {
             color,
             title: `[Sell]`,
-            description: `${findUser.username} đã yêu cầu hủy giao dịch mã: SELL${transacionId}, hãy confirm nếu không có vẫn đề gì và hoặc report để báo cáo admin`,
+            description: `${findUser.username} đã yêu cầu hủy giao dịch mã: SELL${transacionId}, hãy report nếu có vấn đề báo cáo admin`,
             timestamp: new Date().toISOString(),
             footer: MEZON_EMBED_FOOTER,
           },
@@ -537,14 +565,14 @@ export class SellService {
         const componentSells = [
           {
             components: [
-              {
-                id: `confirmSell_CONFIRM_${authId}_${clanId}_${mode}_${isPublic}_${color}_${authorName}_${transacionId}_${seller.id}_${buyer.id}`,
-                type: EMessageComponentType.BUTTON,
-                component: {
-                  label: `Confirm`,
-                  style: EButtonMessageStyle.SUCCESS,
-                },
-              },
+              // {
+              //   id: `confirmSell_CONFIRM_${authId}_${clanId}_${mode}_${isPublic}_${color}_${authorName}_${transacionId}_${seller.id}_${buyer.id}`,
+              //   type: EMessageComponentType.BUTTON,
+              //   component: {
+              //     label: `Confirm`,
+              //     style: EButtonMessageStyle.SUCCESS,
+              //   },
+              // },
               {
                 id: `confirmSell_REPORT_${authId}_${clanId}_${mode}_${isPublic}_${color}_${authorName}_${transacionId}_${seller.id}_${buyer.id}`,
                 type: EMessageComponentType.BUTTON,
@@ -556,10 +584,12 @@ export class SellService {
             ],
           },
         ];
+
         const messSell = await buyer.sendDM({
-          embed: embedsell,
+          embed: embedBuy,
           components: componentSells,
         });
+
         if (!messSell) {
           return;
         }
@@ -570,67 +600,63 @@ export class SellService {
             id: messSell.message_id,
             clan_id: '0',
             channel_id: messSell.channel_id,
-            content: embedsell,
+            content: embedBuy,
           },
         ];
-        await this.transactionP2PRepository.save(transaction);
-
-        const embedBuy = [
-          {
-            color,
-            title: `[Buy]`,
-            description: `Bạn đã yêu cầu hủy giao dịch mã: SELL${transacionId} với ${seller.username}, hãy liên hệ với họ để họ xác nhận`,
-            timestamp: new Date().toISOString(),
-            footer: MEZON_EMBED_FOOTER,
-          },
-        ];
-        await seller.sendDM({ embed: embedBuy });
-      }
-
-      if (typeButtonRes === EmbebButtonType.CONFIRM) {
-        const transaction = await this.transactionP2PRepository.findOne({
-          where: { id: transacionId || '', deleted: false },
-        });
-        if (!transaction) {
-          return;
-        }
-
         transaction.buyerId = '';
         transaction.buyerName = '';
+        transaction.status = false;
+        transaction.message = [];
+        transaction.deleted = false;
         await this.transactionP2PRepository.save(transaction);
-
-        const embedsell = [
-          {
-            color,
-            title: `[Sell]`,
-            description: `Bạn đã xác nhận yêu cầu hủy giao dịch mã: SELL${transacionId}`,
-            timestamp: new Date().toISOString(),
-            footer: MEZON_EMBED_FOOTER,
-          },
-        ];
-        await buyer.sendDM({ embed: embedsell });
-
-        const embedSell = [
-          {
-            color,
-            title: `[Sell]`,
-            description: `${findUser.username} đã xác nhận yêu cầu hủy giao dịch mã: SELL${transacionId}`,
-            timestamp: new Date().toISOString(),
-            footer: MEZON_EMBED_FOOTER,
-          },
-        ];
-        await seller.sendDM({ embed: embedSell });
-
-        if (transaction?.message.length > 0) {
-          for (const message of transaction?.message) {
-            const channel = await this.client.channels.fetch(
-              message.channel_id,
-            );
-            const msg = await channel?.messages.fetch(message.id);
-            msg?.update({ embed: message.content });
-          }
-        }
+        return;
       }
+
+      // if (typeButtonRes === EmbebButtonType.CONFIRM) {
+      //   const transaction = await this.transactionP2PRepository.findOne({
+      //     where: { id: transacionId || '', deleted: false },
+      //   });
+      //   if (!transaction) {
+      //     return;
+      //   }
+
+      //   transaction.buyerId = '';
+      //   transaction.buyerName = '';
+      //   transaction.status = true;
+      //   await this.transactionP2PRepository.save(transaction);
+
+      //   const embedsell = [
+      //     {
+      //       color,
+      //       title: `[Sell]`,
+      //       description: `Bạn đã xác nhận yêu cầu hủy giao dịch mã: SELL${transacionId}`,
+      //       timestamp: new Date().toISOString(),
+      //       footer: MEZON_EMBED_FOOTER,
+      //     },
+      //   ];
+      //   await buyer.sendDM({ embed: embedsell });
+
+      //   const embedSell = [
+      //     {
+      //       color,
+      //       title: `[Sell]`,
+      //       description: `${findUser.username} đã xác nhận yêu cầu hủy giao dịch mã: SELL${transacionId}`,
+      //       timestamp: new Date().toISOString(),
+      //       footer: MEZON_EMBED_FOOTER,
+      //     },
+      //   ];
+      //   await seller.sendDM({ embed: embedSell });
+
+      //   if (transaction?.message.length > 0) {
+      //     for (const message of transaction?.message) {
+      //       const channel = await this.client.channels.fetch(
+      //         message.channel_id,
+      //       );
+      //       const msg = await channel?.messages.fetch(message.id);
+      //       msg?.update({ embed: message.content });
+      //     }
+      //   }
+      // }
 
       if (typeButtonRes === EmbebButtonType.REPORT) {
         const transaction = await this.transactionP2PRepository.findOne({
@@ -688,6 +714,11 @@ export class SellService {
           return;
         }
 
+        const messageIdSell = transaction.message[0].id;
+        const channel = await this.client.channels.fetch(
+          transaction.message[0].channel_id,
+        );
+
         const findUser = await this.userRepository.findOne({
           where: { user_id: buyer.id },
         });
@@ -712,19 +743,21 @@ export class SellService {
         await this.userRepository.save(findUser);
 
         transaction.deleted = true;
+        transaction.status = true;
         await this.transactionP2PRepository.save(transaction);
 
-        const embed = [
+        const embedDone = [
           {
             color,
-            title: `[Sell]`,
+            title: `[Done transaction]`,
             description: `Giao dịch mã: SELL${transacionId} đã được hoàn thành`,
             timestamp: new Date().toISOString(),
             footer: MEZON_EMBED_FOOTER,
           },
         ];
-        await buyer.sendDM({ embed: embed });
-        await seller.sendDM({ embed: embed });
+        const msg = await channel?.messages.fetch(messageIdSell);
+        msg?.update({ embed: embedDone });
+        await buyer.sendDM({ embed: embedDone });
         if (transaction?.message.length > 0) {
           for (const message of transaction?.message) {
             const channel = await this.client.channels.fetch(

@@ -18,6 +18,7 @@ import {
 } from 'src/bot/constants/configs';
 import { User } from 'src/bot/models/user.entity';
 import { EUserError } from 'src/bot/constants/error';
+import { bankOptions } from 'src/bot/constants/options';
 
 @Command('sell')
 export class SellCommand extends CommandMessage {
@@ -151,12 +152,12 @@ export class SellCommand extends CommandMessage {
             value: '',
             inputs: {
               id: `sell-${messageid}-tknh-ip`,
-              type: EMessageComponentType.INPUT,
+              type: EMessageComponentType.SELECT,
               component: {
-                id: `sell-${messageid}-totalAmount-plhder`,
+                options: bankOptions,
                 required: true,
-                defaultValue: 'Nhap tai khoan ngan hang',
-                type: 'text',
+                valueSelected: bankOptions[0],
+                valueSelectedLabel: bankOptions[0].label,
               },
             },
           },

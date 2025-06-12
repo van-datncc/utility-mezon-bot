@@ -61,10 +61,25 @@ export class ListSellCommand extends CommandMessage {
     const transactions = await this.transactionP2PRepository.find({
       where: {
         clanId: message.clan_id || '',
-        deleted: false,
         sellerId: Not(IsNull()),
+        status: false,
       },
     });
+
+    if (transactions.length === 0) {
+      const content = `[Listsell] Không có giao dịch nào!`;
+
+      return await messageChannel?.reply({
+        t: content,
+        mk: [
+          {
+            type: EMarkdownType.PRE,
+            s: 0,
+            e: content.length,
+          },
+        ],
+      });
+    }
 
     const color = getRandomColor();
 

@@ -44,9 +44,6 @@ export class LixiCommand extends CommandMessage {
   }
 
   async execute(args: string[], message: ChannelMessage) {
-    if (message.channel_id !== '1840686304438784000') {
-      return;
-    }
     const messageChannel = await this.getChannelMessage(message);
     if (message.username === 'Anonymous') {
       const content = `[Lixi] Anonymous can't use this command!`;
