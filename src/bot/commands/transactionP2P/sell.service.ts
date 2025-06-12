@@ -276,8 +276,6 @@ export class SellService {
           return await messsage.update(msgCancel);
         }
 
-        findUser.amount = Number(findUser.amount) - totalAmountValue;
-        await this.userRepository.save(findUser);
         const resultEmbed = {
           color: getRandomColor(),
           title: `[Sell] ${descriptionValue}`,
@@ -672,25 +670,25 @@ export class SellService {
         const findUser = await this.userRepository.findOne({
           where: { user_id: buyer.id },
         });
+
+        const findUserSeller = await this.userRepository.findOne({
+          where: { user_id: sellerId },
+        });
         if (!findUser) return;
+        if (!findUserSeller) return;
 
         if (
-          isNaN(
-            Number(findUser.amount) + Number(transaction.amountLock.amount),
-          ) ||
           isNaN(Number(findUser.amount)) ||
-          isNaN(Number(transaction.amountLock.amount))
+          isNaN(Number(findUserSeller.amount))
         ) {
-          console.log('Number(findUser.amount): ', Number(findUser.amount));
-          console.log(
-            'Number(transaction.amountLock.amount): ',
-            Number(transaction.amountLock.amount),
-          );
           return;
         }
         findUser.amount =
           Number(findUser.amount) + Number(transaction.amountLock.amount);
+        findUserSeller.amount =
+          Number(findUserSeller.amount) - Number(transaction.amount);
         await this.userRepository.save(findUser);
+        await this.userRepository.save(findUserSeller);
 
         transaction.deleted = true;
         transaction.status = true;
@@ -708,15 +706,6 @@ export class SellService {
         const msg = await channel?.messages.fetch(messageIdSell);
         msg?.update({ embed: embedDone });
         await buyer.sendDM({ embed: embedDone });
-        if (transaction?.message.length > 0) {
-          for (const message of transaction?.message) {
-            const channel = await this.client.channels.fetch(
-              message.channel_id,
-            );
-            const msg = await channel?.messages.fetch(message.id);
-            msg?.update({ embed: message.content });
-          }
-        }
       }
     } catch (error) {}
   }
