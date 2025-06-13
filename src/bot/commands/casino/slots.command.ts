@@ -199,7 +199,7 @@ export class SlotsCommand extends CommandMessage {
         return await messageChannel?.reply({ t: 'User not found!' });
       }
       const user = await this.getDataBuyUserId(findUser?.user_id);
-      const messageContent = `- Tổng lần nổ hũ: ${user.totalTimes}\n- Tổng lần nổ 777: ${user.jackpotCount}\n- Tổng tiền đã nhận: ${(+user.totalAmount).toLocaleString('vi-VN')}đ\n- Tổng tiền đã chi: ${(+findUser.amountUsedSlots).toLocaleString('vi-VN')}đ\n\n(Tiền đã nhận chưa tính những lần win 10.000đ)`;
+      const messageContent = `- Tổng lần nổ hũ: ${user?.totalTimes ?? '0'}\n- Tổng lần nổ 777: ${user?.jackpotCount ?? '0'}\n- Tổng tiền đã nhận: ${(user?.totalAmount ?? 0).toLocaleString('vi-VN')}đ\n- Tổng tiền đã chi: ${(+findUser.amountUsedSlots).toLocaleString('vi-VN')}đ\n\n(Tiền đã nhận chưa tính những lần win 10.000đ)`;
       const embed: EmbedProps[] = [
         {
           color: getRandomColor(),
@@ -225,13 +225,12 @@ export class SlotsCommand extends CommandMessage {
       if (this.queue.length === 0) return;
       const msg = this.queue.shift();
       if (msg) await this.processSlotMessage(msg);
-    }, 20);
+    }, 30);
   }
 
   private async processSlotMessage(message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
     const money = 5000;
-
     const users = await this.userRepository.find({
       where: [
         { user_id: message.sender_id },
@@ -376,8 +375,8 @@ export class SlotsCommand extends CommandMessage {
                 'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420408191_0spritesheet.json',
               jackpot: botInfo.jackPot,
               pool: results,
-              repeat: 6,
-              duration: 0.5,
+              repeat: 3,
+              duration: 0.2,
             },
           },
         },
@@ -403,39 +402,37 @@ export class SlotsCommand extends CommandMessage {
     };
     const messageBot = await this.getChannelMessage(msg);
 
-    setTimeout(() => {
-      const msgResults = {
-        color: getRandomColor(),
-        title: '🎰 Kết quả Slots 🎰',
-        description: `
+    const msgResults = {
+      color: getRandomColor(),
+      title: '🎰 Kết quả Slots 🎰',
+      description: `
             Jackpot: ${Math.floor(botInfo.jackPot)}
             Bạn đã cược: ${money}
             Bạn ${win ? 'thắng' : 'thua'}: ${win ? wonAmount : money}
             Jackpot mới: ${newJackPot}
             `,
-        fields: [
-          {
-            name: '',
-            value: '',
-            inputs: {
-              id: `slots`,
-              type: EMessageComponentType.ANIMATION,
-              component: {
-                url_image:
-                  'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420411527_0spritesheet.png',
-                url_position:
-                  'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420408191_0spritesheet.json',
-                jackpot: Math.floor(botInfo.jackPot),
-                pool: results,
-                repeat: 6,
-                duration: 0.5,
-                isResult: 1,
-              },
+      fields: [
+        {
+          name: '',
+          value: '',
+          inputs: {
+            id: `slots`,
+            type: EMessageComponentType.ANIMATION,
+            component: {
+              url_image:
+                'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420411527_0spritesheet.png',
+              url_position:
+                'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420408191_0spritesheet.json',
+              jackpot: Math.floor(botInfo.jackPot),
+              pool: results,
+              repeat: 3,
+              duration: 0.2,
+              isResult: 1,
             },
           },
-        ],
-      };
-      messageBot?.update({ embed: [msgResults] });
-    }, 4000);
+        },
+      ],
+    };
+    messageBot?.update({ embed: [msgResults] });
   }
 }
