@@ -24,7 +24,7 @@ export class UpdateCommand extends CommandMessage {
       const findUser = await this.userRepository.findOne({
         where: { user_id: userId },
       });
-      if (!findUser || userId === process.env.UTILITY_BOT_ID) {
+      if (!findUser) {
         return messageChannel?.reply({ t: 'Not found user!' });
       }
       const userAmount = +findUser.amount;
@@ -44,7 +44,7 @@ export class UpdateCommand extends CommandMessage {
       const findUser = await this.userRepository.findOne({
         where: { user_id: userId },
       });
-      if (!findUser || userId === process.env.UTILITY_BOT_ID) {
+      if (!findUser) {
         return messageChannel?.reply({ t: 'Not found user!' });
       }
       const userAmount = +findUser.amount;

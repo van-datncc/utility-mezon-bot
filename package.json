@@ -34,7 +34,7 @@
     "cron": "^4.3.0",
     "crypto": "^1.0.1",
     "joi": "^17.13.3",
-    "mezon-sdk": "^2.7.98",
+    "mezon-sdk": "^2.7.99",
     "pg": "^8.14.1",
     "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
