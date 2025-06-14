@@ -45,6 +45,9 @@ export class TransactionP2P {
   @Column({ nullable: true, default: false })
   status: boolean;
 
+  @Column({ nullable: true, default: false })
+  pendingBuyerConfirmation: boolean;
+
   @Column({ type: 'jsonb', nullable: true, default: [] })
   message: {
     id: string;

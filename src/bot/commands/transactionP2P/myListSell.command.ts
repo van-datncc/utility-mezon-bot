@@ -63,8 +63,23 @@ export class MySellCommand extends CommandMessage {
         clanId: message.clan_id || '',
         sellerId: message.sender_id,
         deleted: false,
+        status: false,
       },
     });
+    if (transactions.length === 0) {
+      const content = `[mysellorder] Bạn không có giao dịch nào!`;
+
+      return await messageChannel?.reply({
+        t: content,
+        mk: [
+          {
+            type: EMarkdownType.PRE,
+            s: 0,
+            e: content.length,
+          },
+        ],
+      });
+    }
 
     const colorEmbed = getRandomColor();
     const embedCompoents =
