@@ -33,8 +33,17 @@ export class TransactionP2P {
   @Column({ type: 'numeric', nullable: true, default: 0 })
   amount: number;
 
+  @Column({ type: 'text', nullable: true, default: null })
+  tknh: string;
+
+  @Column({ type: 'text', nullable: true, default: null })
+  stk: string;
+
   @Column({ nullable: true, default: false })
   deleted: boolean;
+
+  @Column({ nullable: true, default: false })
+  status: boolean;
 
   @Column({ type: 'jsonb', nullable: true, default: [] })
   message: {

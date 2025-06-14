@@ -65,6 +65,7 @@ export class MySellCommand extends CommandMessage {
         deleted: false,
       },
     });
+
     const colorEmbed = getRandomColor();
     const embedCompoents =
       this.transactionP2PServiceRepository.generateEmbedComponents(

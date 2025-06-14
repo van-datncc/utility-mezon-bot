@@ -58,14 +58,30 @@ export class MyBuyCommand extends CommandMessage {
       message?.content?.t && typeof message.content.t === 'string'
         ? message.content.t.trim() === '*mybuyorder'
         : false;
+
+    console.log('message', message);
     const transactions = await this.transactionP2PRepository.find({
       where: {
         clanId: message.clan_id || '',
         buyerId: message.sender_id,
-        deleted: false,
-        sellerId: IsNull(),
       },
     });
+
+    console.log('transactions', transactions);
+    if (transactions.length === 0) {
+      const content = `[mybuyorder] Không có giao dịch nào!`;
+
+      return await messageChannel?.reply({
+        t: content,
+        mk: [
+          {
+            type: EMarkdownType.PRE,
+            s: 0,
+            e: content.length,
+          },
+        ],
+      });
+    }
     const colorEmbed = getRandomColor();
     const embedCompoents =
       this.transactionP2PServiceRepository.generateEmbedComponents(

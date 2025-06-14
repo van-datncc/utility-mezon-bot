@@ -54,8 +54,6 @@ export class ListBuyCommand extends CommandMessage {
       });
     }
 
-    const messageid = message.message_id;
-
     const onlyBuySyntax =
       message?.content?.t && typeof message.content.t === 'string'
         ? message.content.t.trim() === '*listbuy'
@@ -64,9 +62,24 @@ export class ListBuyCommand extends CommandMessage {
       where: {
         clanId: message.clan_id || '',
         deleted: false,
-        sellerId: IsNull(),
+        status: false,
       },
     });
+
+    if (transactions.length === 0) {
+      const content = `[ListBuy] Không có giao dịch nào!`;
+
+      return await messageChannel?.reply({
+        t: content,
+        mk: [
+          {
+            type: EMarkdownType.PRE,
+            s: 0,
+            e: content.length,
+          },
+        ],
+      });
+    }
 
     const color = getRandomColor();
 
@@ -79,6 +92,7 @@ export class ListBuyCommand extends CommandMessage {
         '',
         color,
         embedCompoents,
+        transactions,
       );
 
     const components =

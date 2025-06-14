@@ -57,6 +57,7 @@ import { Transaction } from './models/transaction.entity';
 import { ChecktransactionCommand } from './commands/transaction/checktransaction.command';
 import { JackPotTransaction } from './models/jackPotTransaction.entity';
 import { UpdateCommand } from './commands/update/update.command';
+import { SuggestCommand } from './commands/help/suggest.command';
 
 @Module({
   imports: [
@@ -83,6 +84,7 @@ import { UpdateCommand } from './commands/update/update.command';
     ListenerChannelMessage,
     ListenerMessageButtonClicked,
     HelpCommand,
+    SuggestCommand,
     AvatarCommand,
     PollCommand,
     QRCodeCommand,
