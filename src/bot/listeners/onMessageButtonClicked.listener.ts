@@ -52,6 +52,9 @@ export class ListenerMessageButtonClicked {
         case 'buyerConfirm':
           this.handleBuyerConfirm(data);
           break;
+        case 'sellerConfirm':
+          this.handleSellerConfirm(data);
+          break;
         default:
           break;
       }
@@ -129,6 +132,14 @@ export class ListenerMessageButtonClicked {
       await this.sellService.handleBuyerConfirm(data);
     } catch (error) {
       console.log('ERROR handleBuyerConfirm', error);
+    }
+  }
+
+  async handleSellerConfirm(data) {
+    try {
+      await this.buyService.handleSellerConfirm(data);
+    } catch (error) {
+      console.log('ERROR handleSellerConfirm', error);
     }
   }
 }

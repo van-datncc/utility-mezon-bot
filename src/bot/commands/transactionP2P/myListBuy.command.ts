@@ -64,10 +64,11 @@ export class MyBuyCommand extends CommandMessage {
       where: {
         clanId: message.clan_id || '',
         buyerId: message.sender_id,
+        deleted: false,
+        status: false,
       },
     });
 
-    console.log('transactions', transactions);
     if (transactions.length === 0) {
       const content = `[mybuyorder] Không có giao dịch nào!`;
 

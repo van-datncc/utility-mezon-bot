@@ -819,57 +819,219 @@ export class BuyService {
           return;
         }
 
+        // Check if the user is the buyer
         if (transaction.buyerId !== data.user_id) {
           return;
         }
 
-        const findUser = await this.userRepository.findOne({
-          where: { user_id: buyer.id },
+        // Update buyer's message to indicate waiting for seller confirmation
+        const embedBuyerWaiting = [
+          {
+            color,
+            title: `[Waiting for seller]`,
+            description: `Đã xác nhận hoàn thành giao dịch mã: BUY${transacionId}, đang chờ người bán xác nhận`,
+            timestamp: new Date().toISOString(),
+            footer: MEZON_EMBED_FOOTER,
+          },
+        ];
+
+        // Update the current message if it exists
+        if (transaction.message && transaction.message.length > 0) {
+          const messageIdBuy = transaction.message[0].id;
+          const channel = await this.client.channels.fetch(
+            transaction.message[0].channel_id,
+          );
+          const msg = await channel?.messages.fetch(messageIdBuy);
+          msg?.update({ embed: embedBuyerWaiting });
+        }
+
+        // Send confirmation request to seller
+        const embedSellerConfirm = [
+          {
+            color,
+            title: `[Confirm transaction]`,
+            description: `Người mua đã xác nhận hoàn thành giao dịch mã: BUY${transacionId}. Vui lòng xác nhận để hoàn thành giao dịch.`,
+            timestamp: new Date().toISOString(),
+            footer: MEZON_EMBED_FOOTER,
+          },
+        ];
+
+        const componentSellerConfirm = [
+          {
+            components: [
+              {
+                id: `sellerConfirm_CONFIRM_${authId}_${clanId}_${mode}_${isPublic}_${color}_${authorName}_${transacionId}_${sellerId}_${buyerId}`,
+                type: EMessageComponentType.BUTTON,
+                component: {
+                  label: `Confirm`,
+                  style: EButtonMessageStyle.SUCCESS,
+                },
+              },
+              {
+                id: `sellerConfirm_REPORT_${authId}_${clanId}_${mode}_${isPublic}_${color}_${authorName}_${transacionId}_${sellerId}_${buyerId}`,
+                type: EMessageComponentType.BUTTON,
+                component: {
+                  label: `Report`,
+                  style: EButtonMessageStyle.DANGER,
+                },
+              },
+            ],
+          },
+        ];
+
+        const messSellerConfirm = await seller.sendDM({
+          embed: embedSellerConfirm,
+          components: componentSellerConfirm,
         });
-        console.log('jbsa');
+
+        if (!messSellerConfirm) {
+          return;
+        }
+
+        // Update transaction with seller confirmation message
+        transaction.message = transaction.message || [];
+        transaction.message.push({
+          id: messSellerConfirm.message_id,
+          clan_id: '0',
+          channel_id: messSellerConfirm.channel_id,
+          content: embedSellerConfirm,
+        });
+
+        // Mark transaction as pending seller confirmation
+        transaction.pendingSellerConfirmation = true;
+        await this.transactionP2PRepository.save(transaction);
+      }
+    } catch (error) {
+      console.error('Error in handleSelectConfirmBuy:', error);
+    }
+  }
+
+  async handleSellerConfirm(data) {
+    try {
+      const [
+        _,
+        typeButtonRes,
+        authId,
+        clanId,
+        mode,
+        isPublic,
+        color,
+        authorName,
+        transacionId,
+        sellerId,
+        buyerId,
+      ] = data.button_id.split('_');
+
+      const clan = await this.client.clans.fetch('0');
+      const seller = await clan.users.fetch(sellerId);
+      const buyer = await clan.users.fetch(buyerId);
+      const findUser = await this.userRepository.findOne({
+        where: { user_id: data.user_id },
+      });
+
+      if (!findUser) return;
+
+      // Check if the user is the seller
+      if (data.user_id !== sellerId) {
+        return;
+      }
+
+      const transaction = await this.transactionP2PRepository.findOne({
+        where: { id: transacionId || '', deleted: false },
+      });
+
+      if (!transaction || !transaction.pendingSellerConfirmation) {
+        return;
+      }
+
+      if (typeButtonRes === EmbebButtonType.CONFIRM) {
+        const findUserBuyer = await this.userRepository.findOne({
+          where: { user_id: buyerId },
+        });
 
         const findUserSeller = await this.userRepository.findOne({
-          where: { user_id: seller.id },
+          where: { user_id: sellerId },
         });
 
-        if (!findUser) return;
-        if (!findUserSeller) return;
+        if (!findUserBuyer || !findUserSeller) return;
 
         if (
-          isNaN(Number(findUser.amount)) ||
+          isNaN(Number(findUserBuyer.amount)) ||
           isNaN(Number(findUserSeller.amount))
         ) {
           return;
         }
-        findUser.amount = Number(findUser.amount) + Number(transaction.amount);
 
+        // Complete the transaction by transferring tokens
+        findUserBuyer.amount =
+          Number(findUserBuyer.amount) + Number(transaction.amount);
         findUserSeller.amount =
           Number(findUserSeller.amount) - Number(transaction.amount);
-        await this.userRepository.save(findUser);
+
+        await this.userRepository.save(findUserBuyer);
         await this.userRepository.save(findUserSeller);
 
         transaction.deleted = true;
         transaction.status = true;
+        transaction.pendingSellerConfirmation = false;
         await this.transactionP2PRepository.save(transaction);
 
-        const embed = [
+        // Notify both parties that the transaction is complete
+        const embedDone = [
           {
             color,
-            title: `[Buy]`,
+            title: `[Done transaction]`,
             description: `Giao dịch mã: BUY${transacionId} đã được hoàn thành`,
             timestamp: new Date().toISOString(),
             footer: MEZON_EMBED_FOOTER,
           },
         ];
 
-        const messageIdSell = transaction.message[0].id;
-        const channel = await this.client.channels.fetch(
-          transaction.message[0].channel_id,
-        );
-        const msg = await channel?.messages.fetch(messageIdSell);
-        msg?.update({ embed });
+        // Update both seller and buyer messages
+        for (const message of transaction.message) {
+          const messageChannel = await this.client.channels.fetch(
+            message.channel_id,
+          );
+          const messageObj = await messageChannel?.messages.fetch(message.id);
+          messageObj?.update({ embed: embedDone, components: [] });
+        }
+      } else if (typeButtonRes === EmbebButtonType.REPORT) {
+        const bot = await this.userRepository.findOne({
+          where: { user_id: process.env.UTILITY_BOT_ID || '' },
+        });
+        if (!bot) {
+          return;
+        }
+
+        const embed = [
+          {
+            color,
+            title: `[Report]`,
+            description: `Giao dịch mã: BUY${transacionId} đã báo cáo đến admin, hãy liên hệ Admin để được phản hồi sớm nhất`,
+            timestamp: new Date().toISOString(),
+            footer: MEZON_EMBED_FOOTER,
+          },
+        ];
+        await buyer.sendDM({ embed: embed });
         await seller.sendDM({ embed: embed });
+
+        const embedAdmin = [
+          {
+            color,
+            title: `[report]`,
+            description: `${seller.username} đã gửi báo cáo giao dịch mã: BUY${transacionId}`,
+            timestamp: new Date().toISOString(),
+            footer: MEZON_EMBED_FOOTER,
+          },
+        ];
+        const admindb = await this.userRepository.findOne({
+          where: { username: bot.invitor[clanId] || '' },
+        });
+        const admin = await clan.users.fetch(admindb?.user_id || '');
+        await admin.sendDM({ embed: embedAdmin });
       }
-    } catch (error) {}
+    } catch (error) {
+      console.error('Error in handleSellerConfirm:', error);
+    }
   }
 }
