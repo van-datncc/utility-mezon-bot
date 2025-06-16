@@ -1,51 +1,70 @@
 import { ChannelMessage, EMarkdownType } from 'mezon-sdk';
 import { Command } from 'src/bot/base/commandRegister.decorator';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { EUserError } from 'src/bot/constants/error';
 import { CommandMessage } from 'src/bot/base/command.abstract';
-import { User } from 'src/bot/models/user.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
+import { UserCacheService } from 'src/bot/services/user-cache.service';
 
 @Command('kttk')
 export class AccBalanceCommand extends CommandMessage {
   constructor(
     clientService: MezonClientService,
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
+    private userCacheService: UserCacheService,
   ) {
     super(clientService);
   }
 
   async execute(args: string[], message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
-    const findUser = await this.userRepository.findOne({
-      where: { user_id: message.sender_id },
-    });
 
-    if (!findUser)
+    try {
+      const result = await this.userCacheService.getUserBalance(
+        message.sender_id as string,
+      );
+
+      if (result.error) {
+        return await messageChannel?.reply({
+          t:
+            result.error === 'User not found'
+              ? EUserError.INVALID_USER
+              : result.error,
+          mk: [
+            {
+              type: EMarkdownType.PRE,
+              s: 0,
+              e: result.error.length,
+            },
+          ],
+        });
+      }
+
+      const successMessage = `💸Số dư của bạn là ${Math.floor(result.balance).toLocaleString('vi-VN')}đ`;
+
       return await messageChannel?.reply({
-        t: EUserError.INVALID_USER,
+        t: successMessage,
         mk: [
           {
             type: EMarkdownType.PRE,
             s: 0,
-            e: EUserError.INVALID_USER.length,
+            e: successMessage.length,
           },
         ],
       });
+    } catch (error) {
+      console.error('Error in AccBalanceCommand:', error);
 
-    const successMessage = `💸Số dư của bạn là ${Math.floor(Number(findUser.amount))}đ`;
-
-    return await messageChannel?.reply({
-      t: successMessage,
-      mk: [
-        {
-          type: EMarkdownType.PRE,
-          s: 0,
-          e: successMessage.length,
-        },
-      ],
-    });
+      const errorMessage =
+        'Có lỗi xảy ra khi kiểm tra số dư. Vui lòng thử lại sau.';
+      return await messageChannel?.reply({
+        t: errorMessage,
+        mk: [
+          {
+            type: EMarkdownType.PRE,
+            s: 0,
+            e: errorMessage.length,
+          },
+        ],
+      });
+    }
   }
 }

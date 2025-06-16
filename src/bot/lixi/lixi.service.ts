@@ -13,7 +13,7 @@ import { EmbebButtonType, FuncType } from 'src/bot/constants/configs';
 import { MezonBotMessage } from 'src/bot/models/mezonBotMessage.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { EUserError } from '../constants/error';
-import { In } from 'typeorm';
+import { UserCacheService } from 'src/bot/services/user-cache.service';
 
 interface LixiDetail {
   user_id?: string;
@@ -40,6 +40,7 @@ export class LixiService {
     private mezonBotMessageRepository: Repository<MezonBotMessage>,
     @InjectRepository(User) private userRepository: Repository<User>,
     private clientService: MezonClientService,
+    private userCacheService: UserCacheService,
   ) {
     this.client = this.clientService.getClient();
   }
@@ -84,6 +85,7 @@ export class LixiService {
     if (data.user_id !== authId) {
       return;
     }
+
     const channel = await this.client.channels.fetch(data.channel_id);
     const messsage = await channel.messages.fetch(data.message_id);
 
@@ -139,6 +141,7 @@ export class LixiService {
         ],
       });
     }
+
     let balance = totalAmountValue - numLixiValue * minLixiValue;
     if (balance < 0) {
       const content = `[Lixi] [totalAmount] < [minLixi] * [numLixi]`;
@@ -162,6 +165,7 @@ export class LixiService {
       result[i] += 10000;
       diff -= 10000;
     }
+
     const resultEmbed = {
       color: color,
       title: `[Lixi] ${description}`,
@@ -169,10 +173,12 @@ export class LixiService {
           Số lượng lixi: 0/${numLixiValue}
           `,
     };
+
     const lixiDetail = {
       totalAmount: totalAmountValue,
       numLixi: numLixiValue,
     };
+
     const components = this.generateButtonComponents(
       {
         sender_id: authId,
@@ -188,54 +194,92 @@ export class LixiService {
       lixiDetail,
     );
 
-    const findUser = await this.userRepository.findOne({
-      where: { user_id: authId },
-    });
+    try {
+      const findUser = await this.userCacheService.getUserFromCache(authId);
 
-    if (!findUser) {
+      if (!findUser) {
+        return await messsage.update({
+          t: EUserError.INVALID_USER,
+          mk: [
+            {
+              type: EMarkdownType.PRE,
+              s: 0,
+              e: EUserError.INVALID_USER.length,
+            },
+          ],
+        });
+      }
+
+      const currentBalance = findUser.amount || 0;
+      if (currentBalance < totalAmountValue || isNaN(currentBalance)) {
+        return await messsage.update({
+          t: EUserError.INVALID_AMOUNT,
+          mk: [
+            {
+              type: EMarkdownType.PRE,
+              s: 0,
+              e: EUserError.INVALID_AMOUNT.length,
+            },
+          ],
+        });
+      }
+
+      const balanceResult = await this.userCacheService.updateUserBalance(
+        authId,
+        -totalAmountValue,
+        0,
+        10,
+      );
+
+      if (!balanceResult.success) {
+        const errorMessage = balanceResult.error || 'Failed to update balance';
+        return await messsage.update({
+          t: errorMessage,
+          mk: [
+            {
+              type: EMarkdownType.PRE,
+              s: 0,
+              e: errorMessage.length,
+            },
+          ],
+        });
+      }
+
+      await messsage.update({
+        embed: [resultEmbed],
+        components,
+      });
+
+      await this.mezonBotMessageRepository.update(
+        {
+          messageId: data.message_id,
+          channelId: data.channel_id,
+        },
+        {
+          content: `${totalAmountValue}_${minLixiValue}_${numLixiValue}`,
+          lixiResult: [
+            result,
+            totalAmountValue,
+            [] as LixiDetail[],
+            description,
+          ],
+        },
+      );
+    } catch (error) {
+      console.error('Error in handleSubmitCreate:', error);
+      const errorMessage = 'Có lỗi xảy ra khi tạo lixi. Vui lòng thử lại.';
       return await messsage.update({
-        t: EUserError.INVALID_USER,
+        t: errorMessage,
         mk: [
           {
             type: EMarkdownType.PRE,
             s: 0,
-            e: EUserError.INVALID_USER.length,
+            e: errorMessage.length,
           },
         ],
       });
     }
 
-    if ((findUser.amount || 0) < totalAmountValue || isNaN(findUser.amount)) {
-      return await messsage.update({
-        t: EUserError.INVALID_AMOUNT,
-        mk: [
-          {
-            type: EMarkdownType.PRE,
-            s: 0,
-            e: EUserError.INVALID_AMOUNT.length,
-          },
-        ],
-      });
-    }
-    findUser.amount = Number(findUser.amount) - Number(totalAmountValue);
-    await this.userRepository.save(findUser);
-    await messsage.update({
-      embed: [resultEmbed],
-      components,
-    });
-
-    const key = `${data.message_id}-${data.channel_id}`;
-
-    await this.mezonBotMessageRepository.update(
-      {
-        messageId: data.message_id,
-        channelId: data.channel_id,
-      },
-      {
-        content: `${totalAmountValue}_${minLixiValue}_${numLixiValue}`,
-        lixiResult: [result, totalAmountValue, [] as LixiDetail[], description],
-      },
-    );
     return;
   }
 
@@ -263,21 +307,18 @@ export class LixiService {
       const numLixi = Number(numLixiStr);
       const minPerPerson = minPerPersonStr ? Number(minPerPersonStr) : 10000;
 
-      const user = await this.userRepository.findOne({
-        where: { user_id: data.user_id },
-      });
+      if (!data.user_id) return;
+
+      const user = await this.userCacheService.getUserFromCache(data.user_id);
 
       if (!user) return;
 
-      const activeBan = Array.isArray(user.ban)
-        ? user.ban.find(
-            (ban) =>
-              (ban.type === FuncType.LIXI || ban.type === FuncType.ALL) &&
-              ban.unBanTime > Math.floor(Date.now() / 1000),
-          )
-        : null;
+      const banStatus = await this.userCacheService.getUserBanStatus(
+        data.user_id,
+        FuncType.LIXI,
+      );
 
-      if (activeBan) return;
+      if (banStatus.isBanned) return;
 
       const findMessageLixi = await this.mezonBotMessageRepository.findOne({
         where: {
@@ -361,16 +402,17 @@ export class LixiService {
 
       await messsage.update(msgCancel);
 
-      const findUser = await this.userRepository.findOne({
-        where: { user_id: authId },
-      });
+      const refundResult = await this.userCacheService.updateUserBalance(
+        authId,
+        Number(lixiMoney),
+        0,
+        10,
+      );
 
-      if (!findUser) return;
+      if (!refundResult.success) {
+        console.error('Failed to refund lixi money:', refundResult.error);
+      }
 
-      findUser.amount = Number(findUser.amount) + Number(lixiMoney);
-      if (isNaN(findUser.amount)) return;
-
-      await this.userRepository.save(findUser);
       this.cleanupLixi(key);
     } catch (error) {
       console.error('Error cancelling lixi:', error);
@@ -420,7 +462,6 @@ export class LixiService {
 
     // Start processing timeout if not already started
     if (!this.lixiProcessingTimeouts.has(key)) {
-      // where  clear?
       const processingTimeout = setTimeout(() => {
         this.processLixiQueue(
           key,
@@ -436,7 +477,7 @@ export class LixiService {
           minPerPerson,
           description,
         );
-      }, 1000); // 1 second delay
+      }, 500); // 1 second delay
 
       this.lixiProcessingTimeouts.set(key, processingTimeout);
     }
@@ -528,69 +569,80 @@ export class LixiService {
         return;
       }
 
-      const userIds = selectedUsers.map((u) => u.user_id);
-      const users = await this.userRepository.find({
-        where: { user_id: In(userIds) },
-      });
+      const userIds = selectedUsers
+        .map((u) => u.user_id)
+        .filter((id) => id !== undefined) as string[];
+      const userDataPromises = userIds.map((userId) =>
+        this.userCacheService.getUserFromCache(userId),
+      );
 
-      const userMap = new Map(users.map((u) => [u.user_id, u]));
+      const userData = await Promise.all(userDataPromises);
+      const validUsers = userData.filter((user) => user !== null);
+
+      if (validUsers.length === 0) {
+        console.log(`[Lixi] No valid users found for ${key}`);
+        return;
+      }
 
       let chosenLixiAmount = 0;
       const newDetails = [...latestDetails];
       const amountsToUpdate = [...latestAmounts];
-      const updatedUsers: User[] = [];
+      const balanceUpdates: Array<{ userId: string; amount: number }> = [];
 
-      for (const u of selectedUsers) {
-        if (amountsToUpdate.length === 0) break;
+      for (
+        let i = 0;
+        i < selectedUsers.length && amountsToUpdate.length > 0;
+        i++
+      ) {
+        const selectedUser = selectedUsers[i];
+        const user = validUsers.find((u) => u.user_id === selectedUser.user_id);
 
-        const user = userMap.get(u.user_id);
         if (!user) continue;
 
         const chosenAmount = amountsToUpdate.shift() || minPerPerson;
-        const currentAmount = Number(user.amount);
-
-        if (isNaN(currentAmount) || isNaN(chosenAmount)) continue;
 
         const lixiDetail: LixiDetail = {
-          user_id: u.user_id,
-          username: user.username,
+          user_id: selectedUser.user_id,
+          username: user.username as string,
           amount: chosenAmount,
         };
 
         newDetails.push(lixiDetail);
-        user.amount = currentAmount + chosenAmount;
         chosenLixiAmount += chosenAmount;
-        updatedUsers.push(user);
+
+        if (selectedUser.user_id) {
+          balanceUpdates.push({
+            userId: selectedUser.user_id,
+            amount: chosenAmount,
+          });
+        }
       }
 
       if (newDetails.length > numLixi) {
         newDetails.splice(numLixi);
       }
 
-      await this.userRepository.manager.transaction(
-        'READ COMMITTED',
-        async (transactionalEntityManager) => {
-          await transactionalEntityManager.update(
-            MezonBotMessage,
-            {
-              messageId: originalData.message_id,
-              channelId: originalData.channel_id,
-            },
-            {
-              lixiResult: [
-                amountsToUpdate,
-                lixiMoney - chosenLixiAmount,
-                newDetails,
-                description,
-              ],
-            },
-          );
-
-          if (updatedUsers.length) {
-            await transactionalEntityManager.save(updatedUsers);
-          }
+      // Update database first check
+      await this.mezonBotMessageRepository.update(
+        {
+          messageId: originalData.message_id,
+          channelId: originalData.channel_id,
+        },
+        {
+          lixiResult: [
+            amountsToUpdate,
+            lixiMoney - chosenLixiAmount,
+            newDetails,
+            description,
+          ],
         },
       );
+
+      const balancePromises = balanceUpdates.map(({ userId, amount }) =>
+        this.userCacheService.updateUserBalance(userId, amount, 0, 5),
+      );
+
+      await Promise.allSettled(balancePromises);
 
       // Update UI
       if (chosenLixiAmount > 0) {
@@ -630,7 +682,7 @@ export class LixiService {
               minPerPerson,
               description,
             );
-          }, 1000);
+          }, 500);
 
           this.lixiProcessingTimeouts.set(key, nextProcessingTimeout);
         }
@@ -670,8 +722,6 @@ export class LixiService {
 
       const [updatedAmounts, __, latestReceivers] =
         updatedMessageData.lixiResult;
-
-      console.log('RUNNNN1122121');
 
       const receivers = latestReceivers;
       const receiverList = receivers
