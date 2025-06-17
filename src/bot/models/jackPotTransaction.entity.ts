@@ -3,7 +3,8 @@ import { TABLE } from '../constants/tables';
 
 export enum JackpotType {
   WIN = 'win',
-  JACKPOT = 'jackPot'
+  JACKPOT = 'jackPot',
+  REGULAR = 'regular'
 }
 
 @Index(['id', 'user_id'])

@@ -8,7 +8,7 @@ import { CommandMessage } from 'src/bot/base/command.abstract';
 import { Command } from 'src/bot/base/commandRegister.decorator';
 import { User } from 'src/bot/models/user.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { getRandomColor } from 'src/bot/utils/helps';
 import { EUserError } from 'src/bot/constants/error';
 import { EmbedProps, FuncType } from 'src/bot/constants/configs';
@@ -117,6 +117,9 @@ export class SlotsCommand extends CommandMessage {
 
   async getLast10JackpotWinners() {
     const rawData = await this.jackPotTransaction.find({
+      where: {
+        type: Not(JackpotType.REGULAR),
+      },
       order: { createAt: 'DESC' },
       take: 10,
     });
@@ -142,7 +145,7 @@ export class SlotsCommand extends CommandMessage {
       .createQueryBuilder('jackpot')
       .select('jackpot.user_id', 'user_id')
       .addSelect(
-        `SUM(CASE WHEN jackpot.amount != 10000 THEN 1 ELSE 0 END)`,
+        `SUM(CASE WHEN jackpot.type != :regularType THEN 1 ELSE 0 END)`,
         'totalTimes',
       )
       .addSelect('SUM(jackpot.amount)', 'totalAmount')
@@ -150,7 +153,14 @@ export class SlotsCommand extends CommandMessage {
         `SUM(CASE WHEN jackpot.type = 'jackPot' THEN 1 ELSE 0 END)`,
         'jackpotCount',
       )
-      .where('jackpot.user_id = :userId', { userId })
+      .addSelect(
+        `SUM(CASE WHEN jackpot.type != :regularType THEN jackpot.amount ELSE 0 END)`,
+        'totalAmountJackPot',
+      )
+      .where('jackpot.user_id = :userId', {
+        userId,
+        regularType: JackpotType.REGULAR,
+      })
       .groupBy('jackpot.user_id')
       .getRawOne();
   }
@@ -172,6 +182,7 @@ export class SlotsCommand extends CommandMessage {
         `SUM(CASE WHEN jackpot.type = 'jackPot' THEN 1 ELSE 0 END)`,
         'jackpotCount',
       )
+      .where('jackpot.type != :type', { type: JackpotType.REGULAR })
       .groupBy('jackpot.user_id')
       .orderBy('totalamount', 'DESC')
       .limit(5)
@@ -202,7 +213,7 @@ export class SlotsCommand extends CommandMessage {
       const messageArray: string[] = [];
       top10List.forEach((data, index) =>
         messageArray.push(
-          `${index + 1}. **${data.username}** nổ ${(+data.amount).toLocaleString('vi-VN')}đ lúc ${data.time}`,
+          `${index + 1}. ${data.type === JackpotType.JACKPOT ? ` [ 777 ] ` : ''} **${data.username}** nổ ${(+data.amount).toLocaleString('vi-VN')}đ lúc ${data.time}`,
         ),
       );
       const messageContent = messageArray.length
@@ -239,10 +250,7 @@ export class SlotsCommand extends CommandMessage {
         {
           color: getRandomColor(),
           title: `TOP 5 NGƯỜI NỔ HŨ NHIỀU NHẤT`,
-          description:
-            '```' +
-            messageContent +
-            '```',
+          description: '```' + messageContent + '```',
           timestamp: new Date().toISOString(),
           footer: {
             text: 'Powered by Mezon',
@@ -269,7 +277,7 @@ export class SlotsCommand extends CommandMessage {
         return await messageChannel?.reply({ t: 'User not found!' });
       }
       const user = await this.getDataBuyUserId(findUser?.user_id);
-      const messageContent = `- Tổng lần nổ hũ: ${user?.totalTimes ?? '0'}\n- Tổng lần nổ 777: ${ user?.jackpotCount ?? '0'}\n- Tổng tiền đã nhận: ${(user.totalAmount).toLocaleString('vi-VN')}đ`;
+      const messageContent = `- Tổng lần nổ hũ: ${user?.totalTimes ?? '0'}\n- Tổng lần nổ 777: ${user?.jackpotCount ?? '0'}\n- Tổng tiền đã nhận: ${(+user.totalAmount).toLocaleString('vi-VN')}đ\n- Tổng tiền nổ hũ đã nhận: ${(+user.totalAmountJackPot).toLocaleString('vi-VN')}đ`;
       const embed: EmbedProps[] = [
         {
           color: getRandomColor(),
@@ -286,6 +294,12 @@ export class SlotsCommand extends CommandMessage {
       return await messageChannel?.reply({ embed });
     }
     if (args[0] === 'clear-cache') {
+      const userValid = [
+        '1827994776956309504',
+        '1826814768338440192',
+        '1840678415796015104',
+      ];
+      if (!userValid.includes(message.sender_id)) return;
       const messageChannel = await this.getChannelMessage(message);
 
       try {
@@ -458,6 +472,7 @@ export class SlotsCommand extends CommandMessage {
       let wonAmount = 0;
       const betMoney = Math.round(money * 0.9);
       let isJackPot = false;
+      let typeWin;
 
       if (
         number[0] === number[1] &&
@@ -467,9 +482,11 @@ export class SlotsCommand extends CommandMessage {
         wonAmount = Math.floor(currentJackPot * 0.8);
         isJackPot = true;
         win = true;
+        typeWin = JackpotType.JACKPOT;
       } else if (number[0] === number[1] && number[1] === number[2]) {
         wonAmount = Math.floor(currentJackPot * 0.3);
         win = true;
+        typeWin = JackpotType.WIN;
       } else if (new Set(number).size <= 2) {
         wonAmount = money * 2;
         if (currentJackPot < betMoney * 2) {
@@ -477,6 +494,7 @@ export class SlotsCommand extends CommandMessage {
           isJackPot = true;
         }
         win = true;
+        typeWin = JackpotType.REGULAR;
       }
 
       const newJackPot = win
@@ -511,13 +529,13 @@ export class SlotsCommand extends CommandMessage {
           .insert({
             user_id: message.sender_id,
             amount: Number(wonAmount),
-            type: isJackPot ? JackpotType.JACKPOT : JackpotType.WIN,
+            type: typeWin,
             createAt: Date.now(),
             clan_id: message.clan_id,
             channel_id: message.channel_id,
           })
           .then(async () => {
-            if (wonAmount === money*2) return
+            if (wonAmount === money * 2) return;
             const clan = this.client.clans.get('0');
             const user = await clan?.users.fetch('1827994776956309504');
             await user?.sendDM({
@@ -547,7 +565,7 @@ export class SlotsCommand extends CommandMessage {
                 jackpot: Number(currentJackPot),
                 pool: results,
                 repeat: 3,
-                duration: 0.2,
+                duration: 0.35,
               },
             },
           },
@@ -594,7 +612,7 @@ export class SlotsCommand extends CommandMessage {
                     jackpot: Math.floor(Number(currentJackPot)),
                     pool: results,
                     repeat: 3,
-                    duration: 0.2,
+                    duration: 0.35,
                     isResult: 1,
                   },
                 },
@@ -604,7 +622,7 @@ export class SlotsCommand extends CommandMessage {
 
           setTimeout(() => {
             messageBot?.update({ embed: [msgResults] });
-          }, 1000);
+          }, 300);
         });
       });
     } finally {
