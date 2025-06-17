@@ -196,11 +196,11 @@ export class SlotsCommand extends CommandMessage {
         return {
           user_id: r.user_id,
           username: findUser?.username || '',
-          totalAmount: parseFloat(r.totalamount),
-          totalTimes: parseInt(r.totalTimes, 10),
-          totalUsed: +(findUser?.amountUsedSlots ?? 0),
-          jackpotCount: +r.jackpotCount,
-          winCount: +r.winCount,
+          totalAmount: parseFloat(r.totalamount) || 0,
+          totalTimes: parseInt(r.totalTimes, 10) || 0,
+          totalUsed: +(findUser?.amountUsedSlots || 0),
+          jackpotCount: +(r.jackpotCount || 0),
+          winCount: +(r.winCount || 0),
         };
       }),
     );
@@ -240,7 +240,7 @@ export class SlotsCommand extends CommandMessage {
       const messageArray: string[] = [];
       top5List.forEach((data, index) =>
         messageArray.push(
-          `${index + 1}. **${data.username}** \n - Tổng số lần nổ: ${data.totalTimes} lần \n - Tổng lần nổ 777: ${data.jackpotCount} lần\n - Tổng tiền nhận được: ${data.totalAmount.toLocaleString('vi-VN')}đ`,
+          `${index + 1}. **${data.username}** \n - Tổng số lần nổ: ${data.totalTimes} lần \n - Tổng lần nổ 777: ${data.jackpotCount} lần\n - Tổng tiền nhận được: ${+(data?.totalAmount ?? 0).toLocaleString('vi-VN')}đ`,
         ),
       );
       const messageContent = messageArray.length
@@ -277,7 +277,7 @@ export class SlotsCommand extends CommandMessage {
         return await messageChannel?.reply({ t: 'User not found!' });
       }
       const user = await this.getDataBuyUserId(findUser?.user_id);
-      const messageContent = `- Tổng lần nổ hũ: ${user?.totalTimes ?? '0'}\n- Tổng lần nổ 777: ${user?.jackpotCount ?? '0'}\n- Tổng tiền đã nhận: ${(+user.totalAmount).toLocaleString('vi-VN')}đ\n- Tổng tiền nổ hũ đã nhận: ${(+user.totalAmountJackPot).toLocaleString('vi-VN')}đ`;
+      const messageContent = `- Tổng lần nổ hũ: ${user?.totalTimes ?? '0'}\n- Tổng lần nổ 777: ${user?.jackpotCount ?? '0'}\n- Tổng tiền đã nhận: ${(+(user?.totalAmount ?? 0)).toLocaleString('vi-VN')}đ\n- Tổng tiền nổ hũ đã nhận: ${(+(user?.totalAmountJackPot ?? 0)).toLocaleString('vi-VN')}đ`;
       const embed: EmbedProps[] = [
         {
           color: getRandomColor(),
