@@ -187,7 +187,7 @@ export class SlotsCommand extends CommandMessage {
       .orderBy('totalamount', 'DESC')
       .limit(5)
       .getRawMany();
-
+    console.log('rawData', rawData);
     return await Promise.all(
       rawData.map(async (r) => {
         const findUser = await this.userRepository.findOne({
@@ -240,7 +240,7 @@ export class SlotsCommand extends CommandMessage {
       const messageArray: string[] = [];
       top5List.forEach((data, index) =>
         messageArray.push(
-          `${index + 1}. **${data.username}** \n - Tổng số lần nổ: ${data.totalTimes} lần \n - Tổng lần nổ 777: ${data.jackpotCount} lần\n - Tổng tiền nhận được: ${+(data?.totalAmount ?? 0).toLocaleString('vi-VN')}đ`,
+          `${index + 1}. **${data.username}** \n - Tổng số lần nổ: ${data.totalTimes} lần \n - Tổng lần nổ 777: ${data.jackpotCount} lần\n - Tổng tiền nhận được: ${(+(data?.totalAmount ?? 0)).toLocaleString('vi-VN')}đ`,
         ),
       );
       const messageContent = messageArray.length
