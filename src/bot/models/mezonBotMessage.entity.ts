@@ -13,6 +13,7 @@ export interface LixiDetail {
 }
 
 @Index(['messageId', 'channelId', 'userId'])
+// @Index(['messageId', 'channelId', 'deleted'])
 @Entity(TABLE.MEZON_BOT_MESSAGE)
 export class MezonBotMessage {
   @PrimaryGeneratedColumn()

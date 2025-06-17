@@ -57,6 +57,8 @@ import { Transaction } from './models/transaction.entity';
 import { ChecktransactionCommand } from './commands/transaction/checktransaction.command';
 import { JackPotTransaction } from './models/jackPotTransaction.entity';
 import { UpdateCommand } from './commands/update/update.command';
+import { RedisCacheService } from './services/redis-cache.service';
+import { UserCacheService } from './services/user-cache.service';
 
 @Module({
   imports: [
@@ -90,6 +92,8 @@ import { UpdateCommand } from './commands/update/update.command';
     ConfigService,
     ExtendersService,
     DynamicCommandService,
+    RedisCacheService,
+    UserCacheService,
     ListenerTokenSend,
     WithdrawTokenCommand,
     AccBalanceCommand,

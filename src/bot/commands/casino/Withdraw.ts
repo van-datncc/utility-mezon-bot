@@ -8,10 +8,18 @@ import { User } from 'src/bot/models/user.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { BlockRut } from 'src/bot/models/blockrut.entity';
 import { FuncType } from 'src/bot/constants/configs';
+import { UserCacheService } from 'src/bot/services/user-cache.service';
+import { BaseQueueProcessor } from 'src/bot/base/queue-processor.base';
 
-let withdraw: string[] = [];
+interface WithdrawRequest {
+  message: ChannelMessage;
+  amount: number;
+}
+
 @Command('rut')
 export class WithdrawTokenCommand extends CommandMessage {
+  private queueProcessor: BaseQueueProcessor<WithdrawRequest>;
+
   constructor(
     clientService: MezonClientService,
     @InjectRepository(User)
@@ -19,142 +27,233 @@ export class WithdrawTokenCommand extends CommandMessage {
     @InjectRepository(BlockRut)
     private BlockRutRepository: Repository<BlockRut>,
     private dataSource: DataSource,
+    private userCacheService: UserCacheService,
   ) {
     super(clientService);
+
+    this.queueProcessor =
+      new (class extends BaseQueueProcessor<WithdrawRequest> {
+        constructor(private withdrawCommand: WithdrawTokenCommand) {
+          super('WithdrawTokenCommand', 1, 20000);
+        }
+
+        protected async processItem(request: WithdrawRequest): Promise<void> {
+          await this.withdrawCommand.processWithdrawal(
+            request.message,
+            request.amount,
+          );
+        }
+
+        protected async handleProcessingError(
+          request: WithdrawRequest,
+          error: any,
+        ): Promise<void> {
+          this.logger.error(`Failed to process withdrawal:`, {
+            userId: request.message.sender_id,
+            amount: request.amount,
+            error: error.message,
+          });
+
+          const messageChannel = await this.withdrawCommand.getChannelMessage(
+            request.message,
+          );
+          const errorMessage =
+            'Có lỗi xảy ra khi xử lý rút tiền. Vui lòng thử lại sau.';
+          await messageChannel?.reply({
+            t: errorMessage,
+            mk: [{ type: EMarkdownType.PRE, s: 0, e: errorMessage.length }],
+          });
+        }
+      })(this);
   }
 
   async execute(args: string[], message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
-    const findUser = await this.userRepository.findOne({
-      where: { user_id: message.sender_id },
-    });
-    const findBot = await this.userRepository.findOne({
-      where: { user_id: process.env.UTILITY_BOT_ID },
-    });
 
-    if (!findUser) {
+    try {
+      const money = parseInt(args[0], 10);
+      if (args[0] === undefined || money <= 0 || isNaN(money)) {
+        return await messageChannel?.reply({
+          t: EUserError.INVALID_AMOUNT,
+          mk: [
+            {
+              type: EMarkdownType.PRE,
+              s: 0,
+              e: EUserError.INVALID_AMOUNT.length,
+            },
+          ],
+        });
+      }
+
+      const blockrut = await this.BlockRutRepository.findOne({
+        where: { id: 1 },
+      });
+      if (blockrut && blockrut.block === true) {
+        const blockMessage =
+          'Rút tiền hiện đang bị tạm khóa. Vui lòng thử lại sau.';
+        return await messageChannel?.reply({
+          t: blockMessage,
+          mk: [
+            {
+              type: EMarkdownType.PRE,
+              s: 0,
+              e: blockMessage.length,
+            },
+          ],
+        });
+      }
+
+      const banStatus = await this.userCacheService.getUserBanStatus(
+        message.sender_id as string,
+        FuncType.RUT,
+      );
+
+      if (banStatus.isBanned && banStatus.banInfo) {
+        const unbanDate = new Date(banStatus.banInfo.unBanTime * 1000);
+        const formattedTime = unbanDate.toLocaleString('vi-VN', {
+          timeZone: 'Asia/Ho_Chi_Minh',
+          hour12: false,
+        });
+        const msgText = `❌ Bạn đang bị cấm thực hiện hành động "rut" đến ${formattedTime}\n   - Lý do: ${banStatus.banInfo.note}\n NOTE: Hãy liên hệ admin để mua vé unban`;
+        return await messageChannel?.reply({
+          t: msgText,
+          mk: [
+            {
+              type: EMarkdownType.PRE,
+              s: 0,
+              e: msgText.length,
+            },
+          ],
+        });
+      }
+
+      await (this.queueProcessor as any).addToQueue({ message, amount: money });
+    } catch (error) {
+      console.error('Error in WithdrawTokenCommand:', error);
+
+      const errorMessage =
+        'Có lỗi xảy ra khi xử lý yêu cầu rút tiền. Vui lòng thử lại sau.';
       return await messageChannel?.reply({
-        t: EUserError.INVALID_USER,
+        t: errorMessage,
         mk: [
           {
             type: EMarkdownType.PRE,
             s: 0,
-            e: EUserError.INVALID_USER.length,
+            e: errorMessage.length,
           },
         ],
       });
     }
-    const activeBan = Array.isArray(findUser.ban)
-      ? findUser.ban.find(
-          (ban) =>
-            (ban.type === FuncType.RUT || ban.type === FuncType.ALL) &&
-            ban.unBanTime > Math.floor(Date.now() / 1000),
-        )
-      : null;
+  }
 
-    if (activeBan) {
-      const unbanDate = new Date(activeBan.unBanTime * 1000);
-      const formattedTime = unbanDate.toLocaleString('vi-VN', {
-        timeZone: 'Asia/Ho_Chi_Minh',
-        hour12: false,
-      });
-      const content = activeBan.note;
-      const msgText = `❌ Bạn đang bị cấm thực hiện hành động "rut" đến ${formattedTime}\n   - Lý do: ${content}\n NOTE: Hãy liên hệ admin để mua vé unban`;
-      return await messageChannel?.reply({
-        t: msgText,
-        mk: [
-          {
-            type: EMarkdownType.PRE,
-            s: 0,
-            e: msgText.length,
-          },
-        ],
-      });
+  public async processWithdrawal(message: ChannelMessage, money: number) {
+    const messageChannel = await this.getChannelMessage(message);
+    const userId = message.sender_id as string;
+    const botId = process.env.UTILITY_BOT_ID;
+
+    if (!botId) {
+      throw new Error('UTILITY_BOT_ID is not defined');
     }
 
-    if (!findUser) {
-    }
-    const blockrut = await this.BlockRutRepository.findOne({
-      where: { id: 1 },
-    });
-    if (blockrut && blockrut.block === true) {
-      console.log('blockrut');
-      return;
-    }
-    if (withdraw.includes(message.sender_id)) {
-      return;
-    }
-
-    withdraw.push(message.sender_id);
-    const money = parseInt(args[0], 10);
-
-    if (args[0] === undefined || money <= 0 || isNaN(money)) {
-      withdraw = withdraw.filter((id) => id !== message.sender_id);
-      return await messageChannel?.reply({
-        t: EUserError.INVALID_AMOUNT,
-        mk: [
-          {
-            type: EMarkdownType.PRE,
-            s: 0,
-            e: EUserError.INVALID_AMOUNT.length,
-          },
-        ],
-      });
-    }
-
-    await this.dataSource
-      .transaction(async (manager) => {
-        const userRepo = manager.getRepository(User);
-
-        const findUser = await userRepo.findOne({
-          where: { user_id: message.sender_id },
+    try {
+      const hasEnoughBalance = await this.userCacheService.hasEnoughBalance(
+        userId,
+        money,
+      );
+      if (!hasEnoughBalance) {
+        return await messageChannel?.reply({
+          t: EUserError.INVALID_AMOUNT,
+          mk: [
+            {
+              type: EMarkdownType.PRE,
+              s: 0,
+              e: EUserError.INVALID_AMOUNT.length,
+            },
+          ],
         });
+      }
 
-        if (!findUser) {
-          throw new Error(EUserError.INVALID_USER);
-        }
+      const balanceResult = await this.userCacheService.updateUserBalance(
+        userId,
+        -money,
+        0,
+        10,
+      );
 
-        if ((findUser.amount || 0) < money || isNaN(findUser.amount)) {
-          throw new Error(EUserError.INVALID_AMOUNT);
-        }
-
-        findUser.amount = (+findUser.amount || 0) - +money;
-        await userRepo.save(findUser);
-        if (findBot) {
-          const newBotAmount = (+findBot.amount || 0) - +money;
-          await this.userRepository.update(
-            { user_id: process.env.UTILITY_BOT_ID },
-            { amount: newBotAmount },
-          );
-        }
-
-        const dataSendToken = {
-          sender_id: process.env.UTILITY_BOT_ID,
-          sender_name: process.env.BOT_KOMU_NAME,
-          receiver_id: message.sender_id,
-          amount: +money,
-        };
-        await this.client.sendToken(dataSendToken);
-
-        const successMessage = `💸Rút ${money} token thành công`;
-        await messageChannel?.reply({
-          t: successMessage,
-          mk: [{ type: EMarkdownType.PRE, s: 0, e: successMessage.length }],
+      if (!balanceResult.success) {
+        const errorMessage = balanceResult.error || EUserError.INVALID_AMOUNT;
+        return await messageChannel?.reply({
+          t: errorMessage,
+          mk: [
+            {
+              type: EMarkdownType.PRE,
+              s: 0,
+              e: errorMessage.length,
+            },
+          ],
         });
-      })
-      .catch(async (err) => {
-        let errorText = EUserError.INVALID_AMOUNT;
-        if (err.message === EUserError.INVALID_USER) {
-          errorText = EUserError.INVALID_USER;
-        }
+      }
 
-        await messageChannel?.reply({
-          t: errorText,
-          mk: [{ type: EMarkdownType.PRE, s: 0, e: errorText.length }],
-        });
-      })
-      .finally(() => {
-        withdraw = withdraw.filter((id) => id !== message.sender_id);
+      const botCache = await this.userCacheService.createUserIfNotExists(
+        botId,
+        'UtilityBot',
+        'UtilityBot',
+      );
+
+      if (!botCache) {
+        throw new Error('Failed to create or get bot cache');
+      }
+
+      const botBalanceResult = await this.userCacheService.updateUserBalance(
+        botId,
+        -money,
+        0,
+        10,
+      );
+
+      if (!botBalanceResult.success) {
+        await this.userCacheService.updateUserBalance(userId, money, 0, 5);
+        throw new Error(
+          `Failed to update bot balance: ${botBalanceResult.error}`,
+        );
+      }
+
+      const dataSendToken = {
+        sender_id: botId,
+        sender_name: process.env.BOT_KOMU_NAME || 'UtilityBot',
+        receiver_id: userId,
+        amount: money,
+      };
+      await this.client.sendToken(dataSendToken);
+
+      const successMessage = `💸Rút ${money.toLocaleString('vi-VN')} token thành công`;
+      await messageChannel?.reply({
+        t: successMessage,
+        mk: [{ type: EMarkdownType.PRE, s: 0, e: successMessage.length }],
       });
+
+      console.log(
+        `Withdrawal processed successfully: ${money} tokens for user ${userId}, Bot Balance Updated: ${botBalanceResult.success}`,
+      );
+    } catch (error) {
+      console.error('Error processing withdrawal:', error);
+
+      try {
+        await this.userCacheService.updateUserBalance(userId, money, 0, 5);
+      } catch (rollbackError) {
+        console.error('Error rolling back withdrawal:', rollbackError);
+      }
+
+      const errorMessage =
+        'Có lỗi xảy ra khi xử lý rút tiền. Số dư của bạn đã được hoàn lại.';
+      await messageChannel?.reply({
+        t: errorMessage,
+        mk: [{ type: EMarkdownType.PRE, s: 0, e: errorMessage.length }],
+      });
+    }
+  }
+
+  public getQueueStats() {
+    return this.queueProcessor.getQueueStats();
   }
 }

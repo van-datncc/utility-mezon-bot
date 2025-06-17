@@ -1,110 +1,113 @@
-import { InjectRepository } from '@nestjs/typeorm';
-import { ChannelMessage, EMarkdownType } from 'mezon-sdk';
-import { CommandMessage } from 'src/bot/base/command.abstract';
 import { Command } from 'src/bot/base/commandRegister.decorator';
-import { User } from 'src/bot/models/user.entity';
+import { CommandMessage } from 'src/bot/base/command.abstract';
+import { ChannelMessage } from 'mezon-sdk';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
-import { Repository } from 'typeorm';
+import { UserCacheService } from 'src/bot/services/user-cache.service';
 
 @Command('update')
 export class UpdateCommand extends CommandMessage {
   constructor(
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
     clientService: MezonClientService,
+    private userCacheService: UserCacheService
   ) {
     super(clientService);
   }
 
   async execute(args: string[], message: ChannelMessage) {
     if (message.sender_id !== '1827994776956309504') return;
+
     const messageChannel = await this.getChannelMessage(message);
+
     if (args[0] === 'up') {
       const userId = args[1];
-      const findUser = await this.userRepository.findOne({
-        where: { user_id: userId },
-      });
-      if (!findUser) {
-        return messageChannel?.reply({ t: 'Not found user!' });
-      }
-      const userAmount = +findUser.amount;
-      const isNumber = !isNaN(Number(args[2]));
+      const amountStr = args[2];
+      const isNumber = !isNaN(Number(amountStr));
       if (!isNumber) {
         return messageChannel?.reply({ t: 'Amount invalid!' });
       }
-      const amount = +userAmount + Number(args[2]);
-      await this.userRepository.update({ user_id: userId }, { amount });
+
+      const user = await this.userCacheService.getUserFromCache(userId);
+      if (!user) {
+        return messageChannel?.reply({ t: 'Not found user!' });
+      }
+
+      const amount = +user.amount + Number(amountStr);
+      user.amount = amount;
+      await this.userCacheService.updateUserCache(userId, user);
+
       return messageChannel?.reply({
-        t: `Cộng ${args[2]} cho user ${userId} thành công!`,
+        t: `Cộng ${amountStr} cho user ${userId} thành công!`,
       });
     }
 
     if (args[0] === 'down') {
       const userId = args[1];
-      const findUser = await this.userRepository.findOne({
-        where: { user_id: userId },
-      });
-      if (!findUser) {
-        return messageChannel?.reply({ t: 'Not found user!' });
-      }
-      const userAmount = +findUser.amount;
-      const isNumber = !isNaN(Number(args[2]));
+      const amountStr = args[2];
+      const isNumber = !isNaN(Number(amountStr));
       if (!isNumber) {
         return messageChannel?.reply({ t: 'Amount invalid!' });
       }
-      const amount = +userAmount - Number(args[2]);
-      await this.userRepository.update({ user_id: userId }, { amount });
+
+      const user = await this.userCacheService.getUserFromCache(userId);
+      if (!user) {
+        return messageChannel?.reply({ t: 'Not found user!' });
+      }
+
+      const amount = +user.amount - Number(amountStr);
+      user.amount = amount;
+      await this.userCacheService.updateUserCache(userId, user);
+
       return messageChannel?.reply({
-        t: `Trừ ${args[2]} cho user ${userId} thành công!`,
+        t: `Trừ ${amountStr} cho user ${userId} thành công!`,
       });
     }
 
     if (args[0] === 'jackPotUp') {
       const userId = process.env.UTILITY_BOT_ID;
-      const findUser = await this.userRepository.findOne({
-        where: { user_id: userId },
-      });
-      if (!findUser) {
-        return messageChannel?.reply({ t: 'Not found user!' });
-      }
-      const jackPot = +findUser.jackPot;
-      const isNumber = !isNaN(Number(args[1]));
+      const amountStr = args[1];
+      const isNumber = !isNaN(Number(amountStr));
       if (!isNumber) {
         return messageChannel?.reply({ t: 'Amount invalid!' });
       }
-      const jackPotUp = +jackPot + Number(args[1]);
-      await this.userRepository.update(
-        { user_id: userId },
-        { jackPot: jackPotUp },
-      );
+
+      const user = await this.userCacheService.getUserFromCache(userId!);
+      if (!user) {
+        return messageChannel?.reply({ t: 'Not found user!' });
+      }
+
+      const jackPot = +user.jackPot! + Number(amountStr);
+      user.jackPot = jackPot;
+      await this.userCacheService.updateUserCache(userId!, user);
+
       return messageChannel?.reply({
-        t: `Tăng thêm jackpot ${args[1]} thành công!`,
+        t: `Tăng thêm jackpot ${amountStr} thành công!`,
       });
     }
 
     if (args[0] === 'jackPotDown') {
       const userId = process.env.UTILITY_BOT_ID;
-      const findUser = await this.userRepository.findOne({
-        where: { user_id: userId },
-      });
-      if (!findUser) {
-        return messageChannel?.reply({ t: 'Not found user!' });
-      }
-      const jackPot = +findUser.jackPot;
-      const isNumber = !isNaN(Number(args[1]));
+      const amountStr = args[1];
+      const isNumber = !isNaN(Number(amountStr));
       if (!isNumber) {
         return messageChannel?.reply({ t: 'Amount invalid!' });
       }
-      const jackPotUp = +jackPot - Number(args[1]);
-      await this.userRepository.update(
-        { user_id: userId },
-        { jackPot: jackPotUp },
-      );
+
+      const user = await this.userCacheService.getUserFromCache(userId!);
+      if (!user) {
+        return messageChannel?.reply({ t: 'Not found user!' });
+      }
+
+      const jackPot = +user.jackPot! - Number(amountStr);
+      user.jackPot = jackPot;
+      await this.userCacheService.updateUserCache(userId!, user);
+
       return messageChannel?.reply({
-        t: `Giảm jackpot đi ${args[1]} thành công!`,
+        t: `Giảm jackpot đi ${amountStr} thành công!`,
       });
     }
 
-    return messageChannel?.reply({ t: 'up, down, jackPotUp, jackPotDown' });
+    return messageChannel?.reply({
+      t: 'Câu lệnh không hợp lệ. Dùng: up, down, jackPotUp, jackPotDown',
+    });
   }
 }

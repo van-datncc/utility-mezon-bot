@@ -24,7 +24,24 @@ export class SicboCommand extends CommandMessage {
     super(clientService);
   }
 
+
   async execute(args: string[], message: ChannelMessage) {
+    const messageChannel = await this.getChannelMessage(message);
+    const msgText = `❌ Command sicbo hiện đang bảo trì!`;
+    return await messageChannel?.reply({
+      t: msgText,
+      mk: [
+        {
+          type: EMarkdownType.PRE,
+          s: 0,
+          e: msgText.length,
+        },
+      ],
+    });
+  }
+
+
+  async execute333(args: string[], message: ChannelMessage) {
     const messageChannel = await this.getChannelMessage(message);
     const findUser = await this.userRepository.findOne({
       where: { user_id: message.sender_id },
