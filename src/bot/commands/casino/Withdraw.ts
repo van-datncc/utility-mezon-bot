@@ -173,6 +173,7 @@ export class WithdrawTokenCommand extends CommandMessage {
         });
       }
 
+
       const balanceResult = await this.userCacheService.updateUserBalance(
         userId,
         -money,
@@ -199,42 +200,33 @@ export class WithdrawTokenCommand extends CommandMessage {
         'UtilityBot',
         'UtilityBot',
       );
-
       if (!botCache) {
         throw new Error('Failed to create or get bot cache');
       }
-
       const botBalanceResult = await this.userCacheService.updateUserBalance(
         botId,
         -money,
         0,
         10,
       );
-
       if (!botBalanceResult.success) {
-        await this.userCacheService.updateUserBalance(userId, money, 0, 5);
         throw new Error(
           `Failed to update bot balance: ${botBalanceResult.error}`,
         );
       }
-
       const dataSendToken = {
         sender_id: botId,
         sender_name: process.env.BOT_KOMU_NAME || 'UtilityBot',
         receiver_id: userId,
         amount: money,
       };
-      await this.client.sendToken(dataSendToken);
-
+      await this.client.sendToken(dataSendToken); 
       const successMessage = `💸Rút ${money.toLocaleString('vi-VN')} token thành công`;
       await messageChannel?.reply({
         t: successMessage,
         mk: [{ type: EMarkdownType.PRE, s: 0, e: successMessage.length }],
       });
-
-      console.log(
-        `Withdrawal processed successfully: ${money} tokens for user ${userId}, Bot Balance Updated: ${botBalanceResult.success}`,
-      );
+     
     } catch (error) {
       console.error('Error processing withdrawal:', error);
 

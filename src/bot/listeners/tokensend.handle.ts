@@ -31,7 +31,6 @@ export class ListenerTokenSend extends BaseQueueProcessor<TokenSentEvent> {
   @OnEvent(Events.TokenSend)
   async handleRecharge(tokenEvent: TokenSentEvent) {
     if (tokenEvent.amount <= 0) return;
-
     const botId = process.env.UTILITY_BOT_ID;
     if (!botId) {
       console.error('UTILITY_BOT_ID is not defined');
@@ -112,7 +111,7 @@ export class ListenerTokenSend extends BaseQueueProcessor<TokenSentEvent> {
       );
 
       if (!botBalanceResult.success) {
-        this.logger.error(
+        throw new Error(
           `Failed to update bot balance: ${botBalanceResult.error}`,
         );
       }
@@ -136,17 +135,40 @@ export class ListenerTokenSend extends BaseQueueProcessor<TokenSentEvent> {
         mk: [{ type: EMarkdownType.PRE, s: 0, e: successMessage.length }],
       });
 
-      this.logger.log(
-        `Token recharge processed successfully: ${tokenEvent.transaction_id}, Amount: ${amount}, User: ${tokenEvent.sender_id}, Bot Balance Updated: ${botBalanceResult.success}`,
-      );
     } catch (error) {
       try {
-        await this.userCacheService.updateUserBalance(
-          tokenEvent.sender_id as string,
-          -amount,
-          0,
-          5,
-        );
+
+        const dataSendToken = {
+          sender_id: botId,
+          sender_name: process.env.BOT_KOMU_NAME || 'UtilityBot',
+          receiver_id: tokenEvent.sender_id as string,
+          amount: amount,
+        };
+
+        const clan = this.client.clans.get('0');
+        const user = await clan?.users.fetch(tokenEvent.sender_id as string);
+        const successMessage = `💸Nạp không thành công ! ${tokenEvent.amount.toLocaleString('vi-VN')}  token  sẽ được hoàn lại`;
+        
+        await Promise.all([
+           this.userCacheService.updateUserBalance(
+            botId,
+            -amount,
+            0,
+            10,
+          ),
+           this.userCacheService.updateUserBalance(
+            tokenEvent.sender_id as string,
+            -amount,
+            0,
+            5,
+          ),
+          this.client.sendToken(dataSendToken),
+          user?.sendDM({
+            t: successMessage,
+            mk: [{ type: EMarkdownType.PRE, s: 0, e: successMessage.length }],
+          })
+          
+        ]);
       } catch (rollbackError) {
         this.logger.error('Error rolling back recharge:', rollbackError);
       }
