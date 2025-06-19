@@ -25,7 +25,7 @@ export class RedisCacheService {
   private readonly USER_PREFIX = 'user:slots:';
   private readonly LOCK_PREFIX = 'lock:slots:';
 
-  private readonly USER_TTL = 300;
+  private readonly USER_TTL = 24 * 60 * 60;
   private readonly LOCK_TTL = 10;
 
   constructor() {
