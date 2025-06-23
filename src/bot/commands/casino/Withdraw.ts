@@ -231,10 +231,6 @@ export class WithdrawTokenCommand extends CommandMessage {
         t: successMessage,
         mk: [{ type: EMarkdownType.PRE, s: 0, e: successMessage.length }],
       });
-
-      console.log(
-        `Withdrawal processed successfully: ${money} tokens for user ${userId}, Bot Balance Updated: ${botBalanceResult.success}`,
-      );
     } catch (error) {
       console.error('Error processing withdrawal:', error);
 

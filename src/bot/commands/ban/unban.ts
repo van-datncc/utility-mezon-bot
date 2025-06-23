@@ -113,7 +113,6 @@ export class UnbanCommand extends CommandMessage {
       unbanned.push(username);
     }
 
-    console.log('unbanned: ', unbanned);
     let contentMsg = '';
     if (unbanned.length > 0) {
       contentMsg = `${unbanned.join(', ')} đã được unban ${funcType}`;

@@ -1,5 +1,4 @@
 import {
-  ChannelType,
   EButtonMessageStyle,
   EMarkdownType,
   EMessageComponentType,
@@ -249,7 +248,6 @@ export class PollService {
   }
 
   async handleSelectPoll(data) {
-    console.log('data', data, this.blockEditedList);
     try {
       if (
         this.blockEditedList.includes(`${data.message_id}-${data.channel_id}`)
@@ -265,7 +263,6 @@ export class PollService {
         color,
         authorName,
       ] = data.button_id.split('_');
-      console.log('authId', authId);
       const channel = await this.client.channels.fetch(data.channel_id);
       const user = await channel.clan.users.fetch(data.user_id);
       const messsage = await channel.messages.fetch(data.message_id);
@@ -278,7 +275,6 @@ export class PollService {
           deleted: false,
         },
       });
-      console.log('findMessagePoll', findMessagePoll);
       if (!findMessagePoll) return;
       let userVoteMessageId =
         findMessagePoll.pollResult?.map((item) => JSON.parse(item)) || [];

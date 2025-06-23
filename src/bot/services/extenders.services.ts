@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../models/user.entity';
+import { UserCacheService } from './user-cache.service';
+
 interface SharedUserProperties {
   user_id: string;
   username: string;
@@ -16,6 +18,7 @@ export class ExtendersService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private userCacheService: UserCacheService,
   ) {}
 
   async addDBUser(
@@ -23,34 +26,15 @@ export class ExtendersService {
     invitor: string,
     clan_id: string,
   ) {
+    const botId = process.env.UTILITY_BOT_ID;
+    if (user.user_id === botId) return;
     if (user.user_id === '1767478432163172999') return; // ignored anonymous user
-    const findUser = await this.userRepository.findOne({
-      where: { user_id: user.user_id },
-    });
 
-    if (findUser) {
-      findUser.user_id = user.user_id!;
-      findUser.username = user.username!;
-      findUser.avatar = user.clan_avatar! || user.avatar!;
-      findUser.bot = false;
-      findUser.display_name = user.display_name ?? '';
-      findUser.clan_nick = user.clan_nick ? user.clan_nick : findUser.clan_nick;
-      findUser.last_message_id = user.message_id!;
-      findUser.last_message_time = Date.now();
-      findUser.deactive = findUser.deactive;
-      findUser.botPing = findUser.botPing;
-      if (invitor) {
-        const currentWhitelist = findUser.whitelist || {};
-        const clanWhitelist = new Set(currentWhitelist[clan_id] || []);
-        clanWhitelist.add(invitor);
-        currentWhitelist[clan_id] = Array.from(clanWhitelist);
-        findUser.whitelist = currentWhitelist;
+    const cachedUser = await this.userCacheService.getUserFromCache(
+      user.user_id,
+    );
 
-        const currentInvitor = findUser.invitor || {};
-        currentInvitor[clan_id] = invitor;
-        findUser.invitor = currentInvitor;
-      }
-      await this.userRepository.save(findUser);
+    if (cachedUser) {
       return;
     }
 

@@ -1,11 +1,10 @@
 import { ChannelMessage, EMarkdownType } from 'mezon-sdk';
 import { Command } from 'src/bot/base/commandRegister.decorator';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { CommandMessage } from 'src/bot/base/command.abstract';
 import { User } from 'src/bot/models/user.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
-import { BlockRut } from 'src/bot/models/blockrut.entity';
 import { FuncType } from 'src/bot/constants/configs';
 
 @Command('ban')
@@ -22,7 +21,6 @@ export class BanCommand extends CommandMessage {
     const messageChannel = await this.getChannelMessage(message);
     const content = args.join(' ');
     const usernameMatch = content.match(/\[username\]:\s*([^\[\]]+)/);
-    console.log('usernameMatch: ', usernameMatch);
     const typeMatch = content.match(/\[type\]:\s*(\w+)/);
     const timeMatch = content.match(/\[time\]:\s*(\d+)([smhd])/);
     const noteMatch = content.match(/\[note\]:\s*(.+)/);

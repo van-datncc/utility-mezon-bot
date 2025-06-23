@@ -80,8 +80,6 @@ export class LixiService {
     color,
     authorName,
   ) {
-    console.log({ data, authId }, 'handleSubmitCreate');
-
     if (data.user_id !== authId) {
       return;
     }
@@ -364,7 +362,6 @@ export class LixiService {
           );
           break;
         default:
-          console.log(`Unhandled button type: ${typeButtonRes}`);
           break;
       }
     } catch (error) {
@@ -503,7 +500,6 @@ export class LixiService {
 
     // Prevent concurrent processing for the same key
     if (this.lixiProcessing.get(key)) {
-      console.log(`[Lixi] Already processing ${key}, skipping...`);
       return;
     }
 
@@ -565,7 +561,6 @@ export class LixiService {
       );
 
       if (!selectedUsers.length) {
-        console.log(`[Lixi] No users selected for ${key}`);
         return;
       }
 
@@ -580,7 +575,6 @@ export class LixiService {
       const validUsers = userData.filter((user) => user !== null);
 
       if (validUsers.length === 0) {
-        console.log(`[Lixi] No valid users found for ${key}`);
         return;
       }
 

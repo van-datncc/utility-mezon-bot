@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CronJob } from 'cron';
-import { ChannelMessage, EMessageComponentType, MezonClient } from 'mezon-sdk';
-import { MezonBotMessage } from 'src/bot/models/mezonBotMessage.entity';
+import { EMessageComponentType, MezonClient } from 'mezon-sdk';
 import { Sicbo } from 'src/bot/models/sicbo.entity';
 import { User } from 'src/bot/models/user.entity';
 import { UserSicbo } from 'src/bot/models/user.sicbo.entity';
@@ -27,8 +26,6 @@ export class SicboSchedulerService {
   }
 
   startCronJobs(): void {
-    console.log('startCronJobs');
-
     const job = new CronJob(
       '*/1 * * * *',
       () => {

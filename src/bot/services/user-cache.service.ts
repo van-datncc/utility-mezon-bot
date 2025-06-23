@@ -7,10 +7,14 @@ import { RedisCacheService, UserCache } from './redis-cache.service';
 @Injectable()
 export class UserCacheService {
   private readonly logger = new Logger(UserCacheService.name);
+  private readonly sqlLogger = new Logger(`${UserCacheService.name}:SQL`);
 
   private userCache = new Map<string, UserCache>();
-  private readonly MEMORY_CACHE_TTL = 10000;
-  private readonly CACHE_SYNC_INTERVAL = 60000;
+  private readonly CACHE_SYNC_INTERVAL = 5 * 60000;
+  private readonly INACTIVE_USER_CLEANUP_INTERVAL = 10 * 60000;
+  private readonly INACTIVE_USER_THRESHOLD = 30 * 60000;
+  private readonly MAX_CONCURRENT_DB_UPDATES = 10;
+  private readonly BATCH_SIZE = 50;
 
   constructor(
     @InjectRepository(User)
@@ -25,57 +29,192 @@ export class UserCacheService {
       this.syncCacheToDatabase();
     }, this.CACHE_SYNC_INTERVAL);
 
-    this.logger.log('UserCacheService initialized with periodic sync');
+    setInterval(() => {
+      this.cleanupInactiveUsers();
+    }, this.INACTIVE_USER_CLEANUP_INTERVAL);
   }
 
   private async syncCacheToDatabase() {
     try {
-      const updatePromises: Promise<any>[] = [];
-      const syncedUsers: string[] = [];
+      const usersToSync: Array<{ userId: string; userCache: UserCache }> = [];
+
       for (const [userId, userCache] of this.userCache) {
-        if (Date.now() - userCache.lastUpdated < this.CACHE_SYNC_INTERVAL) {
-          updatePromises.push(
-            this.userRepository
-              .update(
-                { user_id: userId },
-                {
-                  amount: Number(userCache.amount),
-                  amountUsedSlots: Number(userCache.amountUsedSlots || 0),
-                  username: userCache.username,
-                  clan_nick: userCache.clan_nick,
-                  jackPot: Number(userCache.jackPot || 0),
-                },
-              )
-              .then(() => {
-                syncedUsers.push(userId);
-              }),
-          );
+        if (
+          Date.now() - userCache.lastUpdated <=
+          this.CACHE_SYNC_INTERVAL + 60 * 1000
+        ) {
+          usersToSync.push({ userId, userCache });
         }
       }
 
-      await Promise.all(updatePromises); // check ?
-
-      if (syncedUsers.length > 0) {
-        this.logger.debug(`Synced ${syncedUsers.length} users to database`);
+      if (usersToSync.length === 0) {
+        return;
       }
+
+      await this.processBatchUpdates(usersToSync);
     } catch (error) {
       this.logger.error('Error syncing cache to database:', error);
+    }
+  }
+
+  private async processBatchUpdates(
+    users: Array<{ userId: string; userCache: UserCache }>,
+  ): Promise<PromiseSettledResult<any>[]> {
+    const allResults: PromiseSettledResult<any>[] = [];
+
+    for (let i = 0; i < users.length; i += this.BATCH_SIZE) {
+      const batch = users.slice(i, i + this.BATCH_SIZE);
+
+      try {
+        await this.bulkUpdateUsersWithCaseWhen(batch);
+      } catch (error) {
+        this.logger.error(
+          `Bulk update failed for batch, falling back to individual updates:`,
+          error,
+        );
+
+        const updatePromises = batch.map(({ userId, userCache }) =>
+          this.updateSingleUser(userId, userCache),
+        );
+
+        const batchResults = await this.limitConcurrency(
+          updatePromises,
+          this.MAX_CONCURRENT_DB_UPDATES,
+        );
+
+        allResults.push(...batchResults);
+      }
+    }
+
+    return allResults;
+  }
+
+  private async bulkUpdateUsersWithCaseWhen(
+    users: Array<{ userId: string; userCache: UserCache }>,
+  ): Promise<void> {
+    if (users.length === 0) return;
+
+    const userIds = users.map(({ userId }) => userId);
+
+    const amountCases = users
+      .map(
+        ({ userId, userCache }) =>
+          `WHEN user_id = '${userId}' THEN ${Number(userCache.amount)}`,
+      )
+      .join(' ');
+
+    const amountUsedSlotsCases = users
+      .map(
+        ({ userId, userCache }) =>
+          `WHEN user_id = '${userId}' THEN ${Number(userCache.amountUsedSlots || 0)}`,
+      )
+      .join(' ');
+
+    const usernameCases = users
+      .map(
+        ({ userId, userCache }) =>
+          `WHEN user_id = '${userId}' THEN '${(userCache.username || '').replace(/'/g, "''")}'`,
+      )
+      .join(' ');
+
+    const clanNickCases = users
+      .map(
+        ({ userId, userCache }) =>
+          `WHEN user_id = '${userId}' THEN '${(userCache.clan_nick || '').replace(/'/g, "''")}'`,
+      )
+      .join(' ');
+
+    const jackPotCases = users
+      .map(
+        ({ userId, userCache }) =>
+          `WHEN user_id = '${userId}' THEN ${Number(userCache.jackPot || 0)}`,
+      )
+      .join(' ');
+
+    const queryBuilder = this.userRepository
+      .createQueryBuilder()
+      .update(User)
+      .set({
+        amount: () => `CASE ${amountCases} END`,
+        amountUsedSlots: () => `CASE ${amountUsedSlotsCases} END`,
+        username: () => `CASE ${usernameCases} END`,
+        clan_nick: () => `CASE ${clanNickCases} END`,
+        jackPot: () => `CASE ${jackPotCases} END`,
+      })
+      .whereInIds(userIds);
+
+    // this.sqlLogger.log(`Bulk updating ${users.length} users`);
+    // this.sqlLogger.debug(`SQL: ${queryBuilder.getSql()}`);
+
+    await queryBuilder.execute();
+  }
+
+  private async updateSingleUser(
+    userId: string,
+    userCache: UserCache,
+  ): Promise<void> {
+    await this.userRepository.update(
+      { user_id: userId },
+      {
+        amount: Number(userCache.amount),
+        amountUsedSlots: Number(userCache.amountUsedSlots || 0),
+        username: userCache.username,
+        clan_nick: userCache.clan_nick,
+        jackPot: Number(userCache.jackPot || 0),
+      },
+    );
+  }
+
+  private async limitConcurrency<T>(
+    promises: Promise<T>[],
+    limit: number,
+  ): Promise<PromiseSettledResult<T>[]> {
+    const results: PromiseSettledResult<T>[] = [];
+
+    for (let i = 0; i < promises.length; i += limit) {
+      const chunk = promises.slice(i, i + limit);
+      const chunkResults = await Promise.allSettled(chunk);
+      results.push(...chunkResults);
+    }
+
+    return results;
+  }
+
+  private async cleanupInactiveUsers() {
+    try {
+      const now = Date.now();
+      const usersToRemove: string[] = [];
+
+      for (const [userId, userCache] of this.userCache) {
+        if (now - userCache.lastUpdated > this.INACTIVE_USER_THRESHOLD) {
+          usersToRemove.push(userId);
+        }
+      }
+
+      if (usersToRemove.length === 0) {
+        return;
+      }
+
+      usersToRemove.forEach((userId) => {
+        this.userCache.delete(userId);
+      });
+    } catch (error) {
+      this.logger.error('Error cleaning up inactive users:', error);
     }
   }
 
   async getUserFromCache(userId: string): Promise<UserCache | null> {
     try {
       const memoryCache = this.userCache.get(userId);
-      if (
-        memoryCache &&
-        Date.now() - memoryCache.lastUpdated < this.MEMORY_CACHE_TTL
-      ) {
+      if (memoryCache) {
+        memoryCache.lastUpdated = Date.now();
         return memoryCache;
       }
 
       let redisCache = await this.redisCacheService.getUserCache(userId);
 
       if (redisCache) {
+        redisCache.lastUpdated = Date.now();
         this.userCache.set(userId, redisCache);
         return redisCache;
       }
@@ -160,12 +299,7 @@ export class UserCacheService {
         Object.assign(cached, updates, { lastUpdated: Date.now() });
       }
 
-      this.redisCacheService.updateUserCache(userId, updates).catch((error) => {
-        this.logger.error(
-          `Error updating Redis user cache for ${userId}:`,
-          error,
-        );
-      });
+      await this.redisCacheService.updateUserCache(userId, updates);
     } catch (error) {
       this.logger.error(`Error updating user cache for ${userId}:`, error);
     }
@@ -316,18 +450,28 @@ export class UserCacheService {
 
   async getCacheStats(): Promise<{
     memoryUserCount: number;
+    estimatedMemoryUsage: string;
     redisStats: any;
   }> {
     try {
       const redisStats = await this.redisCacheService.getCacheStats();
+      const estimatedMemoryPerUser = 0.5;
+      const estimatedMemoryUsageKB =
+        this.userCache.size * estimatedMemoryPerUser;
+
       return {
         memoryUserCount: this.userCache.size,
+        estimatedMemoryUsage:
+          estimatedMemoryUsageKB > 1024
+            ? `${(estimatedMemoryUsageKB / 1024).toFixed(2)} MB`
+            : `${estimatedMemoryUsageKB.toFixed(2)} KB`,
         redisStats,
       };
     } catch (error) {
       this.logger.error('Error getting cache stats:', error);
       return {
         memoryUserCount: this.userCache.size,
+        estimatedMemoryUsage: '0 KB',
         redisStats: {},
       };
     }
@@ -365,8 +509,6 @@ export class UserCacheService {
       const clearedCount = this.userCache.size;
       this.userCache.clear();
 
-      this.logger.log(`Cleared all memory cache (${clearedCount} users)`);
-
       return {
         success: true,
         clearedCount,
@@ -377,6 +519,59 @@ export class UserCacheService {
         success: false,
         clearedCount: 0,
         error: error.message || 'Unknown error',
+      };
+    }
+  }
+
+  async getAllCachedUsers(limit: number = 50): Promise<{
+    users: Array<{
+      userId: string;
+      username: string;
+      clanNick: string;
+      balance: number;
+      lastUpdated: string;
+    }>;
+    totalCount: number;
+  }> {
+    try {
+      const users: Array<{
+        userId: string;
+        username: string;
+        clanNick: string;
+        balance: number;
+        lastUpdated: string;
+        lastUpdatedTimestamp: number;
+      }> = [];
+
+      for (const [userId, userCache] of this.userCache.entries()) {
+        users.push({
+          userId,
+          username: userCache.username || 'Unknown',
+          clanNick: userCache.clan_nick || 'Unknown',
+          balance: Number(userCache.amount) || 0,
+          lastUpdated: new Date(userCache.lastUpdated).toLocaleString('vi-VN', {
+            timeZone: 'Asia/Ho_Chi_Minh',
+            hour12: false,
+          }),
+          lastUpdatedTimestamp: userCache.lastUpdated,
+        });
+      }
+
+      users.sort((a, b) => b.lastUpdatedTimestamp - a.lastUpdatedTimestamp);
+
+      const limitedUsers = users
+        .slice(0, limit)
+        .map(({ lastUpdatedTimestamp, ...user }) => user);
+
+      return {
+        users: limitedUsers,
+        totalCount: this.userCache.size,
+      };
+    } catch (error) {
+      this.logger.error('Error getting all cached users:', error);
+      return {
+        users: [],
+        totalCount: 0,
       };
     }
   }

@@ -19,11 +19,9 @@ import {
   UserClanRemovedEvent,
 } from 'mezon-sdk';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { RoleAssignedEvent } from 'mezon-sdk/dist/cjs/rtapi/realtime';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { ExtendersService } from '../services/extenders.services';
 import { InjectRepository } from '@nestjs/typeorm';
-import { MezonBotMessage } from '../models/mezonBotMessage.entity';
 import { Repository } from 'typeorm';
 import { User } from '../models/user.entity';
 
@@ -43,10 +41,6 @@ export class BotGateway {
   }
 
   initEvent() {
-    this.client.onWebrtcSignalingFwd((data) => {
-      console.log('handlewebrtcsignalingfwd', data);
-    });
-
     this.client.onTokenSend((data: TokenSentEvent) => {
       this.eventEmitter.emit(Events.TokenSend, data);
     });
@@ -81,55 +75,67 @@ export class BotGateway {
 
     this.client.onRoleEvent(async (data) => {
       this.eventEmitter.emit(Events.RoleEvent, data);
-    
+
       const botId = process.env.UTILITY_BOT_ID || '';
       const clanId = data.role?.clan_id;
       const roleId = data.role?.id;
       const maxLevelPermission = data.role?.max_level_permission || 0;
-    
-      const findHighestRole = (roles: { roleId: string; maxLevelPermission: number }[]) => {
+
+      const findHighestRole = (
+        roles: { roleId: string; maxLevelPermission: number }[],
+      ) => {
         if (!roles.length) return undefined;
-        return roles.reduce((max, r) => (r.maxLevelPermission > max.maxLevelPermission ? r : max)).roleId;
+        return roles.reduce((max, r) =>
+          r.maxLevelPermission > max.maxLevelPermission ? r : max,
+        ).roleId;
       };
-    
+
       const bot = await this.userRepository.findOne({
         where: {
           user_id: botId,
         },
       });
       if (!bot || !clanId || !roleId) return;
-    
+
       const currentRoleClan = bot.roleClan || {};
-      const clanData = currentRoleClan[clanId] || { roles: [], highest: undefined };
-    
+      const clanData = currentRoleClan[clanId] || {
+        roles: [],
+        highest: undefined,
+      };
+
       if (data.user_add_ids.includes(botId)) {
         const exists = clanData.roles.some((r) => r.roleId === roleId);
         if (!exists) {
           clanData.roles.push({ roleId, maxLevelPermission });
-    
-          const currentHighest = clanData.roles.find((r) => r.roleId === clanData.roleMax);
-          if (!currentHighest || maxLevelPermission > currentHighest.maxLevelPermission) {
+
+          const currentHighest = clanData.roles.find(
+            (r) => r.roleId === clanData.roleMax,
+          );
+          if (
+            !currentHighest ||
+            maxLevelPermission > currentHighest.maxLevelPermission
+          ) {
             clanData.roleMax = roleId;
           }
         }
-    
+
         currentRoleClan[clanId] = clanData;
-    
+
         await this.userRepository.update(
           { user_id: botId },
           { roleClan: currentRoleClan },
         );
       }
-    
+
       if (data.user_remove_ids.includes(botId)) {
         clanData.roles = clanData.roles.filter((r) => r.roleId !== roleId);
-    
+
         if (clanData.roleMax === roleId) {
           clanData.roleMax = findHighestRole(clanData.roles);
         }
-    
+
         currentRoleClan[clanId] = clanData;
-    
+
         await this.userRepository.update(
           { user_id: botId },
           { roleClan: currentRoleClan },
@@ -170,10 +176,6 @@ export class BotGateway {
         display_name: data.user.display_name,
       };
       await this.extendersService.addDBUser(user, data.invitor, data.clan_id);
-    });
-
-    this.client.onRoleAssign((data: RoleAssignedEvent) => {
-      console.log(data);
     });
 
     this.client.onChannelMessage(async (message) => {

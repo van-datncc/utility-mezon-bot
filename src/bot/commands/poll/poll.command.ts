@@ -74,7 +74,6 @@ export class PollCommand extends CommandMessage {
       embed,
       components,
     });
-    console.log('pollMessageSent', pollMessageSent);
     if (!pollMessageSent) return;
     const dataMezonBotMessage = {
       messageId: pollMessageSent.message_id,

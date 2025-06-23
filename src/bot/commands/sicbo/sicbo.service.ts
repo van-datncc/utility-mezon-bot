@@ -1,25 +1,20 @@
 import {
   EButtonMessageStyle,
-  EMarkdownType,
   EMessageComponentType,
   MezonClient,
-  MezonUpdateRoleBody,
 } from 'mezon-sdk';
 
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Injectable } from '@nestjs/common';
 import { User } from 'src/bot/models/user.entity';
-import {
-  EmbebButtonType,
-  FuncType,
-  MEZON_EMBED_FOOTER,
-} from 'src/bot/constants/configs';
+import { EmbebButtonType, FuncType } from 'src/bot/constants/configs';
 import { MezonBotMessage } from 'src/bot/models/mezonBotMessage.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
 import { getRandomColor } from 'src/bot/utils/helps';
 import { UserSicbo } from 'src/bot/models/user.sicbo.entity';
 import { Sicbo } from 'src/bot/models/sicbo.entity';
+import { UserCacheService } from '../../services/user-cache.service';
 
 @Injectable()
 export class SicboService {
@@ -34,6 +29,7 @@ export class SicboService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private clientService: MezonClientService,
+    private userCacheService: UserCacheService,
   ) {
     this.client = this.clientService.getClient();
   }

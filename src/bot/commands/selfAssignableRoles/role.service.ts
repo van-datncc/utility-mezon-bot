@@ -13,7 +13,7 @@ import { User } from 'src/bot/models/user.entity';
 import { EmbebButtonType, MEZON_EMBED_FOOTER } from 'src/bot/constants/configs';
 import { MezonBotMessage } from 'src/bot/models/mezonBotMessage.entity';
 import { MezonClientService } from 'src/mezon/services/mezon-client.service';
-import { getRandomColor, sleep } from 'src/bot/utils/helps';
+import { getRandomColor } from 'src/bot/utils/helps';
 
 @Injectable()
 export class RoleService {
@@ -124,7 +124,6 @@ export class RoleService {
         role_id,
         role_title,
       ] = data.button_id.split('_');
-      console.log('data: ', data);
       const channel = await this.client.channels.fetch(data.channel_id);
       // const user = await channel.clan.users.fetch(data.user_id);
       const messsage = await channel.messages.fetch(data.message_id);

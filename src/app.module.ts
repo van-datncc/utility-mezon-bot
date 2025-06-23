@@ -31,6 +31,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
         database: configService.get('POSTGRES_DB'),
         autoLoadEntities: true,
         synchronize: true,
+        // logging: true,
         // migrations: [path.join(__dirname, 'src', 'migration', '*.js')],
         // cli: {
         //   migrationsDir: __dirname + '/migration',

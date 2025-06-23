@@ -686,11 +686,6 @@ export class BuyService {
           isNaN(Number(findUser.amount)) ||
           isNaN(Number(transaction.amountLock.amount))
         ) {
-          console.log('Number(findUser.amount): ', Number(findUser.amount));
-          console.log(
-            'Number(transaction.amountLock.amount): ',
-            Number(transaction.amountLock.amount),
-          );
           return;
         }
         findUser.amount =

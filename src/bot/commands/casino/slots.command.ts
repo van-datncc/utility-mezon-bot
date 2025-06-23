@@ -19,27 +19,33 @@ import {
 import { RedisCacheService } from 'src/bot/services/redis-cache.service';
 import { BaseQueueProcessor } from 'src/bot/base/queue-processor.base';
 import { UserCacheService } from 'src/bot/services/user-cache.service';
+import { ReplyStatsService } from 'src/bot/services/reply-stats.service';
 
 const slotItems = [
-  '1.JPG',
-  '2.JPG',
-  '3.JPG',
-  '4.JPG',
-  '5.JPG',
-  '6.JPG',
-  '7.JPG',
-  '8.JPG',
-  '9.JPG',
-  '10.JPG',
-  '11.JPG',
-  '12.JPG',
-  '13.JPG',
-  '14.JPG',
+  '0.png',
+  '1.png',
+  '2.png',
+  '3.png',
+  '4.png',
+  '5.png',
+  '6.png',
+  '7.png',
+  '8.png',
+  '9.png',
+  '10.png',
+  '11.png',
+  '12.png',
+  '13.png',
+  '14.png',
+  '15.png',
 ];
 
 @Command('slots')
 export class SlotsCommand extends CommandMessage {
   private queueProcessor: BaseQueueProcessor<ChannelMessage>;
+  private notifiedUsers: Map<string, number> = new Map();
+  private readonly QUEUE_LIMIT = 50;
+  private readonly NOTIFICATION_CLEAR_THRESHOLD = 20;
 
   constructor(
     @InjectRepository(User)
@@ -48,6 +54,7 @@ export class SlotsCommand extends CommandMessage {
     private jackPotTransaction: Repository<JackPotTransaction>,
     private redisCacheService: RedisCacheService,
     private userCacheService: UserCacheService,
+    private replyStatsService: ReplyStatsService,
     clientService: MezonClientService,
   ) {
     super(clientService);
@@ -92,7 +99,6 @@ export class SlotsCommand extends CommandMessage {
 
     const botCache = await this.userCacheService.getUserFromCache(botId);
     if (!botCache) {
-      // Create bot if not exists
       const newBotCache = await this.userCacheService.createUserIfNotExists(
         botId,
         'UtilityBot',
@@ -104,15 +110,33 @@ export class SlotsCommand extends CommandMessage {
     return Number(botCache.jackPot) || 0;
   }
 
-  private async updateBotJackpot(newJackpot: number): Promise<void> {
+  private async updateBotJackpot(
+    newJackpot: number,
+    lockKey: string,
+  ): Promise<boolean> {
     const botId = process.env.UTILITY_BOT_ID;
     if (!botId) {
       throw new Error('UTILITY_BOT_ID is not defined');
     }
 
-    await this.userCacheService.updateUserCache(botId, {
-      jackPot: Number(newJackpot),
-    });
+    const jackpotLockKey = `jackpot_${botId}`;
+    const lockAcquired = await this.redisCacheService.acquireLock(
+      jackpotLockKey,
+      10,
+    );
+
+    if (!lockAcquired) {
+      return false;
+    }
+
+    try {
+      await this.userCacheService.updateUserCache(botId, {
+        jackPot: Number(newJackpot),
+      });
+      return true;
+    } finally {
+      await this.redisCacheService.releaseLock(jackpotLockKey);
+    }
   }
 
   async getLast10JackpotWinners() {
@@ -187,7 +211,6 @@ export class SlotsCommand extends CommandMessage {
       .orderBy('totalamount', 'DESC')
       .limit(5)
       .getRawMany();
-    console.log('rawData', rawData);
     return await Promise.all(
       rawData.map(async (r) => {
         const findUser = await this.userRepository.findOne({
@@ -232,7 +255,7 @@ export class SlotsCommand extends CommandMessage {
           },
         },
       ];
-      return await messageChannel?.reply({ embed });
+      return await this.trackReplyAndSend(messageChannel, { embed });
     }
     if (args[0] === 'top5') {
       const messageChannel = await this.getChannelMessage(message);
@@ -259,7 +282,7 @@ export class SlotsCommand extends CommandMessage {
           },
         },
       ];
-      return await messageChannel?.reply({ embed });
+      return await this.trackReplyAndSend(messageChannel, { embed });
     }
     if (args[0] === 'check') {
       const messageChannel = await this.getChannelMessage(message);
@@ -274,7 +297,9 @@ export class SlotsCommand extends CommandMessage {
         });
       }
       if (!findUser) {
-        return await messageChannel?.reply({ t: 'User not found!' });
+        return await this.trackReplyAndSend(messageChannel, {
+          t: 'User not found!',
+        });
       }
       const user = await this.getDataBuyUserId(findUser?.user_id);
       const messageContent = `- Tổng lần nổ hũ: ${user?.totalTimes ?? '0'}\n- Tổng lần nổ 777: ${user?.jackpotCount ?? '0'}\n- Tổng tiền đã nhận: ${(+(user?.totalAmount ?? 0)).toLocaleString('vi-VN')}đ\n- Tổng tiền nổ hũ đã nhận: ${(+(user?.totalAmountJackPot ?? 0)).toLocaleString('vi-VN')}đ`;
@@ -291,55 +316,9 @@ export class SlotsCommand extends CommandMessage {
           },
         },
       ];
-      return await messageChannel?.reply({ embed });
+      return await this.trackReplyAndSend(messageChannel, { embed });
     }
-    if (args[0] === 'clear-cache') {
-      const userValid = [
-        '1827994776956309504',
-        '1826814768338440192',
-        '1840678415796015104',
-      ];
-      if (!userValid.includes(message.sender_id)) return;
-      const messageChannel = await this.getChannelMessage(message);
 
-      try {
-        const memoryClearResult =
-          await this.userCacheService.clearAllMemoryCache();
-
-        await this.redisCacheService.clearAllCache();
-        const cacheStats = await this.userCacheService.getCacheStats();
-
-        const successMessage =
-          `✅ **Cache cleared successfully!**\n\n` +
-          `📊 **Results:**\n` +
-          `- Memory cache cleared: ${memoryClearResult.clearedCount} users\n` +
-          `- Redis cache cleared: ✅\n` +
-          `- Current memory users: ${cacheStats.memoryUserCount}\n` +
-          `- Current Redis users: ${cacheStats.redisStats.userCacheKeys || 0}`;
-
-        const embed: EmbedProps[] = [
-          {
-            color: getRandomColor(),
-            title: '🧹 Cache Clear Results',
-            description: '```' + successMessage + '```',
-            timestamp: new Date().toISOString(),
-            footer: {
-              text: 'Powered by Mezon',
-              icon_url:
-                'https://cdn.mezon.vn/1837043892743049216/1840654271217930240/1827994776956309500/857_0246x0w.webp',
-            },
-          },
-        ];
-
-        return await messageChannel?.reply({ embed });
-      } catch (error) {
-        const errorMessage = `❌ **Error clearing cache:**\n\n${error.message}`;
-        return await messageChannel?.reply({
-          t: errorMessage,
-          mk: [{ type: EMarkdownType.PRE, s: 0, e: errorMessage.length }],
-        });
-      }
-    }
     if (args[0] === 'info') {
       const messageChannel = await this.getChannelMessage(message);
 
@@ -377,15 +356,135 @@ export class SlotsCommand extends CommandMessage {
           },
         ];
 
-        return await messageChannel?.reply({ embed });
+        return await this.trackReplyAndSend(messageChannel, { embed });
       } catch (error) {
         const errorMessage = `❌ **Error getting system info:**\n\n${error.message}`;
-        return await messageChannel?.reply({
+        return await this.trackReplyAndSend(messageChannel, {
           t: errorMessage,
           mk: [{ type: EMarkdownType.PRE, s: 0, e: errorMessage.length }],
         });
       }
     }
+
+    if (args[0] === 'cache') {
+      const messageChannel = await this.getChannelMessage(message);
+
+      try {
+        const actualLimit = 500;
+
+        const cachedUsersData =
+          await this.userCacheService.getAllCachedUsers(actualLimit);
+
+        if (cachedUsersData.users.length === 0) {
+          const noUsersMessage = '❌ **Không có users nào trong cache**';
+          return await this.trackReplyAndSend(messageChannel, {
+            t: noUsersMessage,
+            mk: [{ type: EMarkdownType.PRE, s: 0, e: noUsersMessage.length }],
+          });
+        }
+
+        const usersList = cachedUsersData.users
+          .map(
+            (user, index) =>
+              `${index + 1}. **${user.username}** \n` +
+              `   - UserID: ${user.userId}\n` +
+              `   - Balance: ${user.balance.toLocaleString('vi-VN')}đ\
+              n` +
+              `   - Last Updated: ${user.lastUpdated}`,
+          )
+          .join('\n\n');
+
+        const cacheMessage =
+          `👥 **Cached Users List** (${actualLimit}/${cachedUsersData.totalCount})\n\n` +
+          usersList;
+
+        const embed: EmbedProps[] = [
+          {
+            color: getRandomColor(),
+            title: '💾 Users Cache List',
+            description: '```' + cacheMessage + '```',
+            timestamp: new Date().toISOString(),
+            footer: {
+              text: 'Powered by Mezon',
+              icon_url:
+                'https://cdn.mezon.vn/1837043892743049216/1840654271217930240/1827994776956309500/857_0246x0w.webp',
+            },
+          },
+        ];
+
+        return await this.trackReplyAndSend(messageChannel, { embed });
+      } catch (error) {
+        const errorMessage = `❌ **Error getting cache list:**\n\n${error.message}`;
+        return await this.trackReplyAndSend(messageChannel, {
+          t: errorMessage,
+          mk: [{ type: EMarkdownType.PRE, s: 0, e: errorMessage.length }],
+        });
+      }
+    }
+
+    if (args[0] === 'replystats') {
+      const messageChannel = await this.getChannelMessage(message);
+
+      try {
+        const limit = args[1] ? parseInt(args[1]) : 50;
+        const actualLimit = Math.min(Math.max(limit, 1), 100);
+
+        const replyStats = this.replyStatsService.getReplyStats(actualLimit);
+        const currentRate = this.replyStatsService.getCurrentReplyRate();
+        const statsInfo = this.replyStatsService.getStatsInfo();
+
+        if (replyStats.length === 0) {
+          const noStatsMessage = '❌ **Chưa có dữ liệu thống kê reply**';
+          return await this.trackReplyAndSend(messageChannel, {
+            t: noStatsMessage,
+            mk: [{ type: EMarkdownType.PRE, s: 0, e: noStatsMessage.length }],
+          });
+        }
+
+        const statsList = replyStats
+          .map(
+            (stat, index) =>
+              `${index + 1}. ${stat.formattedTime} - ${stat.count} replies`,
+          )
+          .join('\n');
+
+        const statsMessage =
+          `📊 **Bot Reply Statistics**\n\n` +
+          `🔄 **Current Rate:**\n` +
+          `- Current second: ${currentRate.currentSecond} replies\n` +
+          `- Last minute: ${currentRate.lastMinuteTotal} replies\n` +
+          `- Last 10 minutes: ${currentRate.last10MinutesTotal} replies\n\n` +
+          `📈 **Memory Stats:**\n` +
+          `- Total entries: ${statsInfo.totalEntries}\n` +
+          `- Oldest entry: ${statsInfo.oldestEntry || 'N/A'}\n` +
+          `- Newest entry: ${statsInfo.newestEntry || 'N/A'}\n\n` +
+          `📈 **Recent History (${actualLimit} seconds):**\n` +
+          statsList;
+
+        const embed: EmbedProps[] = [
+          {
+            color: getRandomColor(),
+            title: '📊 Bot Reply Statistics',
+            description: '```' + statsMessage + '```',
+            timestamp: new Date().toISOString(),
+            footer: {
+              text: 'Powered by Mezon',
+              icon_url:
+                'https://cdn.mezon.vn/1837043892743049216/1840654271217930240/1827994776956309500/857_0246x0w.webp',
+            },
+          },
+        ];
+
+        return await this.trackReplyAndSend(messageChannel, { embed });
+      } catch (error) {
+        const errorMessage = `❌ **Error getting reply stats:**\n\n${error.message}`;
+        return await this.trackReplyAndSend(messageChannel, {
+          t: errorMessage,
+          mk: [{ type: EMarkdownType.PRE, s: 0, e: errorMessage.length }],
+        });
+      }
+    }
+    await this.checkAndNotifyQueueBusy(message);
     await (this.queueProcessor as any).addToQueue(message);
   }
 
@@ -397,7 +496,7 @@ export class SlotsCommand extends CommandMessage {
     const lockAcquired = await this.redisCacheService.acquireLock(lockKey, 5);
 
     if (!lockAcquired) {
-      return await messageChannel?.reply({
+      return await this.trackReplyAndSend(messageChannel, {
         t: 'Bạn đang chơi slots quá nhanh! Vui lòng chờ 5 giây.',
         mk: [{ type: EMarkdownType.PRE, s: 0, e: 50 }],
       });
@@ -409,7 +508,7 @@ export class SlotsCommand extends CommandMessage {
       );
 
       if (!findUser) {
-        return await messageChannel?.reply({
+        return await this.trackReplyAndSend(messageChannel, {
           t: EUserError.INVALID_USER,
           mk: [
             {
@@ -434,7 +533,7 @@ export class SlotsCommand extends CommandMessage {
         });
         const content = banStatus.banInfo.note;
         const msgText = `❌ Bạn đang bị cấm thực hiện hành động "slots" đến ${formattedTime}\n   - Lý do: ${content}\n NOTE: Hãy liên hệ admin để mua vé unban`;
-        return await messageChannel?.reply({
+        return await this.trackReplyAndSend(messageChannel, {
           t: msgText,
           mk: [{ type: EMarkdownType.PRE, s: 0, e: msgText.length }],
         });
@@ -446,7 +545,7 @@ export class SlotsCommand extends CommandMessage {
       );
 
       if (!hasEnoughBalance) {
-        return await messageChannel?.reply({
+        return await this.trackReplyAndSend(messageChannel, {
           t: EUserError.INVALID_AMOUNT,
           mk: [
             {
@@ -477,7 +576,7 @@ export class SlotsCommand extends CommandMessage {
       if (
         number[0] === number[1] &&
         number[1] === number[2] &&
-        slotItems[number[0]] === '1.JPG'
+        slotItems[number[0]] === '0.png'
       ) {
         wonAmount = Math.floor(currentJackPot * 0.8);
         isJackPot = true;
@@ -510,7 +609,7 @@ export class SlotsCommand extends CommandMessage {
 
       if (!balanceResult.success) {
         const errorMessage = balanceResult.error || EUserError.INVALID_AMOUNT;
-        return await messageChannel?.reply({
+        return await this.trackReplyAndSend(messageChannel, {
           t: errorMessage,
           mk: [
             {
@@ -522,7 +621,7 @@ export class SlotsCommand extends CommandMessage {
         });
       }
 
-      await this.updateBotJackpot(newJackPot);
+      await this.updateBotJackpot(newJackPot, lockKey);
 
       if (win) {
         this.jackPotTransaction
@@ -559,9 +658,9 @@ export class SlotsCommand extends CommandMessage {
               type: EMessageComponentType.ANIMATION,
               component: {
                 url_image:
-                  'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420411527_0spritesheet.png',
+                  'https://cdn.mezon.ai/0/1834156727516270592/1805415525119955000/1750654919810_1slots.png',
                 url_position:
-                  'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420408191_0spritesheet.json',
+                  'https://cdn.mezon.ai/0/1834156727516270592/1805415525119955000/1750654919802_slots.json',
                 jackpot: Number(currentJackPot),
                 pool: results,
                 repeat: 3,
@@ -572,58 +671,61 @@ export class SlotsCommand extends CommandMessage {
         ],
       };
 
-      messageChannel?.reply({ embed: [resultEmbed] }).then((messBot) => {
-        const msg: ChannelMessage = {
-          mode: messBot.mode,
-          message_id: messBot.message_id,
-          code: messBot.code,
-          create_time: messBot.create_time,
-          update_time: messBot.update_time,
-          id: messBot.message_id,
-          clan_id: message.clan_id,
-          channel_id: message.channel_id,
-          persistent: messBot.persistence,
-          channel_label: message.channel_label,
-          content: {},
-          sender_id: process.env.UTILITY_BOT_ID as string,
-        };
-        this.getChannelMessage(msg).then((messageBot) => {
-          const msgResults = {
-            color: getRandomColor(),
-            title: '🎰 Kết quả Slots 🎰',
-            description: `
-                Jackpot: ${Math.floor(Number(currentJackPot))}
-                Bạn đã cược: ${money}
-                Bạn ${win ? 'thắng' : 'thua'}: ${win ? wonAmount : money}
-                Jackpot mới: ${Math.floor(Number(newJackPot))}
-                `,
-            fields: [
-              {
-                name: '',
-                value: '',
-                inputs: {
-                  id: `slots`,
-                  type: EMessageComponentType.ANIMATION,
-                  component: {
-                    url_image:
-                      'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420411527_0spritesheet.png',
-                    url_position:
-                      'https://cdn.mezon.ai/1840678035754323968/1840682993002221568/1779513150169682000/1746420408191_0spritesheet.json',
-                    jackpot: Math.floor(Number(currentJackPot)),
-                    pool: results,
-                    repeat: 3,
-                    duration: 0.35,
-                    isResult: 1,
-                  },
+      const messBot = await this.trackReplyAndSend(messageChannel, {
+        embed: [resultEmbed],
+      });
+
+      const msg: ChannelMessage = {
+        mode: messBot.mode,
+        message_id: messBot.message_id,
+        code: messBot.code,
+        create_time: messBot.create_time,
+        update_time: messBot.update_time,
+        id: messBot.message_id,
+        clan_id: message.clan_id,
+        channel_id: message.channel_id,
+        persistent: messBot.persistence,
+        channel_label: message.channel_label,
+        content: {},
+        sender_id: process.env.UTILITY_BOT_ID as string,
+      };
+      this.getChannelMessage(msg).then((messageBot) => {
+        const msgResults = {
+          color: getRandomColor(),
+          title: '🎰 Kết quả Slots 🎰',
+          description: `
+            Jackpot: ${Math.floor(Number(currentJackPot))}
+            Bạn đã cược: ${money}
+            Bạn ${win ? 'thắng' : 'thua'}: ${win ? wonAmount : money}
+            Jackpot mới: ${Math.floor(Number(newJackPot))}
+            `,
+          fields: [
+            {
+              name: '',
+              value: '',
+              inputs: {
+                id: `slots`,
+                type: EMessageComponentType.ANIMATION,
+                component: {
+                  url_image:
+                    'https://cdn.mezon.ai/0/1834156727516270592/1805415525119955000/1750654919810_1slots.png',
+                  url_position:
+                    'https://cdn.mezon.ai/0/1834156727516270592/1805415525119955000/1750654919802_slots.json',
+                  jackpot: Math.floor(Number(currentJackPot)),
+                  pool: results,
+                  repeat: 3,
+                  duration: 0.35,
+                  isResult: 1,
                 },
               },
-            ],
-          };
+            },
+          ],
+        };
 
-          setTimeout(() => {
-            messageBot?.update({ embed: [msgResults] });
-          }, 300);
-        });
+        setTimeout(() => {
+          messageBot?.update({ embed: [msgResults] });
+          this.replyStatsService.trackReply();
+        }, 300);
       });
     } finally {
       await this.redisCacheService.releaseLock(lockKey);
@@ -632,5 +734,58 @@ export class SlotsCommand extends CommandMessage {
 
   public getQueueStats() {
     return this.queueProcessor.getQueueStats();
+  }
+
+  private cleanupNotificationCache(): void {
+    const currentTime = Date.now();
+    const fiveMinutesAgo = currentTime - 5 * 60 * 1000;
+
+    for (const [userId, notifiedTime] of this.notifiedUsers.entries()) {
+      if (notifiedTime < fiveMinutesAgo) {
+        this.notifiedUsers.delete(userId);
+      }
+    }
+  }
+
+  private async checkAndNotifyQueueBusy(
+    message: ChannelMessage,
+  ): Promise<boolean> {
+    this.cleanupNotificationCache();
+
+    const queueStats = this.getQueueStats();
+    const currentTime = Date.now();
+
+    if (queueStats.queueLength <= this.NOTIFICATION_CLEAR_THRESHOLD) {
+      this.notifiedUsers.clear();
+    }
+
+    if (queueStats.queueLength > this.QUEUE_LIMIT) {
+      const lastNotifiedTime = this.notifiedUsers.get(message.sender_id) || 0;
+      const timeSinceLastNotification = currentTime - lastNotifiedTime;
+
+      if (timeSinceLastNotification > 30000) {
+        const messageChannel = await this.getChannelMessage(message);
+        const busyMessage =
+          `**Bot đang xử lí lượt chơi của bạn, vui lòng đợi!**\n\n` +
+          `Thông tin queue:\n` +
+          `- Số lượt chờ: ${queueStats.queueLength}\n` +
+          `Lượt chơi của bạn sẽ được xử lí theo thứ tự.`;
+
+        await this.trackReplyAndSend(messageChannel, {
+          t: busyMessage,
+          mk: [{ type: EMarkdownType.PRE, s: 0, e: busyMessage.length }],
+        });
+
+        this.notifiedUsers.set(message.sender_id, currentTime);
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private async trackReplyAndSend(messageChannel: any, content: any) {
+    this.replyStatsService.trackReply();
+    return await messageChannel?.reply(content);
   }
 }
